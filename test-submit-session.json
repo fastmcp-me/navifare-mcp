@@ -1,0 +1,27 @@
+{
+  "legs": [
+    {
+      "segments": [
+        {
+          "airline": "UA",
+          "flightNumber": "1612",
+          "departureAirport": "ZUR",
+          "arrivalAirport": "JFK",
+          "departureDate": "2025-12-15",
+          "departureTime": "14:30",
+          "arrivalTime": "17:45",
+          "plusDays": 0
+        }
+      ]
+    }
+  ],
+  "travelClass": "economy",
+  "adults": 1,
+  "children": 0,
+  "infantsInSeat": 0,
+  "infantsOnLap": 0,
+  "source": "mcp-inspector-test",
+  "price": "800",
+  "currency": "USD",
+  "location": "United States"
+}

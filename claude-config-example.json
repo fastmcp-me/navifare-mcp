@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "navifare": {
+      "command": "node",
+      "args": [
+        "/Users/simonenavifare/navifare/frontend/front-end/mcp/navifare-mcp/dist/index.js"
+      ],
+      "env": {
+        "NAVIFARE_API_BASE_URL": "https://api.navifare.com/api/v1/price-discovery/flights"
+      }
+    }
+  }
+}
+
+

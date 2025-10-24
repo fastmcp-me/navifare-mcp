@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flight Results Widget</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: white;
+      color: #1a1a1a;
+      overflow-x: hidden;
+    }
+    
+    #flight-results-root {
+      width: 100%;
+      min-height: 100vh;
+    }
+    
+    /* Loading spinner */
+    .loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 200px;
+      flex-direction: column;
+      gap: 16px;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .loading-text {
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="flight-results-root">
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading flight results...</div>
+    </div>
+  </div>
+  
+  <script type="module">
+    // Load the React component
+    import('./component.js').catch(error => {
+      console.error('Failed to load React component:', error);
+      document.getElementById('flight-results-root').innerHTML = `
+        <div style="padding: 20px; text-align: center; color: #dc2626;">
+          <h3>Failed to load component</h3>
+          <p>Please refresh the page or contact support.</p>
+        </div>
+      `;
+    });
+  </script>
+</body>
+</html>
+

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: navifare-mcp
+    env: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run serve
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: NAVIFARE_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

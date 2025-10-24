@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navifare MCP Widget Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 40px;
+    }
+    
+    .header h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    
+    .header p {
+      font-size: 18px;
+      opacity: 0.9;
+    }
+    
+    .demo-section {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    
+    .demo-section h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    
+    .info-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+    }
+    
+    .widget-container {
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      background: #fafafa;
+      margin: 20px 0;
+    }
+    
+    iframe {
+      width: 100%;
+      border: none;
+      min-height: 600px;
+      background: white;
+      border-radius: 8px;
+    }
+    
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Courier New', monospace;
+      font-size: 14px;
+      margin: 15px 0;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+    
+    .feature-card {
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .feature-card h3 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 6px 12px;
+      background: #10b981;
+      color: white;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      margin-left: 10px;
+    }
+    
+    .button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    .button:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛫 Navifare MCP Server Demo</h1>
+      <p>OpenAI Apps SDK Compliant Flight Price Discovery</p>
+      <span class="status-badge">✓ ALL TESTS PASSING</span>
+    </div>
+    
+    <div class="demo-section">
+      <h2>OpenAI Apps SDK Features Implemented</h2>
+      
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h3>🎨 UI Components</h3>
+          <p>Interactive widgets with data hydration</p>
+        </div>
+        <div class="feature-card">
+          <h3>🔒 CSP Policies</h3>
+          <p>Secure sandboxed execution</p>
+        </div>
+        <div class="feature-card">
+          <h3>🌍 Locale Support</h3>
+          <p>RFC 4647 locale negotiation</p>
+        </div>
+        <div class="feature-card">
+          <h3>📊 Structured Data</h3>
+          <p>Proper content/structuredContent/_meta</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="demo-section">
+      <h2>Live Widget Preview</h2>
+      
+      <div class="info-box">
+        <strong>Note:</strong> This is a demonstration of what the widget looks like when rendered in ChatGPT. The actual data is injected by OpenAI at runtime via <code>window.openai.toolOutput</code>.
+      </div>
+      
+      <div class="widget-container">
+        <iframe id="widget-frame" src="about:blank"></iframe>
+      </div>
+      
+      <button class="button" onclick="loadWidget()">Load Widget with Sample Data</button>
+    </div>
+    
+    <div class="demo-section">
+      <h2>How to Use</h2>
+      
+      <h3>1. Test with MCP Inspector</h3>
+      <div class="code-block">
+cd /Users/simonenavifare/navifare/frontend/front-end/mcp/navifare-mcp
+npx @modelcontextprotocol/inspector node dist/index.js
+      </div>
+      
+      <h3>2. Add to Claude Desktop</h3>
+      <div class="code-block">
+# Edit: ~/Library/Application Support/Claude/claude_desktop_config.json
+{
+  "mcpServers": {
+    "navifare": {
+      "command": "node",
+      "args": ["/path/to/navifare-mcp/dist/index.js"]
+    }
+  }
+}
+      </div>
+      
+      <h3>3. Test Tools</h3>
+      <div class="info-box">
+        <strong>Available Tools:</strong>
+        <ul>
+          <li><code>submit_session</code> - Create a flight search session</li>
+          <li><code>get_session_results</code> - Retrieve results with interactive UI</li>
+        </ul>
+      </div>
+    </div>
+    
+    <div class="demo-section">
+      <h2>Example Usage in ChatGPT</h2>
+      
+      <div class="info-box">
+        <strong>User:</strong> "Find me prices for United Airlines flight 1612 from Zurich to New York on December 15th, 2025"
+      </div>
+      
+      <div class="info-box" style="border-left-color: #10b981; background: #f0fdf4;">
+        <strong>ChatGPT:</strong> Calls <code>submit_session</code> tool → Gets session ID → Calls <code>get_session_results</code> → Displays interactive widget showing prices from multiple booking sites
+      </div>
+    </div>
+  </div>
+  
+  <script>
+    // Sample data that simulates what OpenAI would inject
+    const sampleData = {
+      request_id: "demo-123-456",
+      status: "complete",
+      totalResults: 5,
+      results: [
+        {
+          rank: 1,
+          price: "$847 USD",
+          convertedPrice: "€783 EUR",
+          website: "United Airlines",
+          bookingUrl: "https://united.com/book/...",
+          fareType: "Special Fare",
+          timestamp: new Date().toISOString()
+        },
+        {
+          rank: 2,
+          price: "$892 USD",
+          convertedPrice: "€824 EUR",
+          website: "Expedia",
+          bookingUrl: "https://expedia.com/...",
+          fareType: "Standard Fare",
+          timestamp: new Date().toISOString()
+        },
+        {
+          rank: 3,
+          price: "$905 USD",
+          convertedPrice: "€836 EUR",
+          website: "Kayak",
+          bookingUrl: "https://kayak.com/...",
+          fareType: "Standard Fare",
+          timestamp: new Date().toISOString()
+        },
+        {
+          rank: 4,
+          price: "$923 USD",
+          convertedPrice: "€852 EUR",
+          website: "Google Flights",
+          bookingUrl: "https://google.com/flights/...",
+          fareType: "Standard Fare",
+          timestamp: new Date().toISOString()
+        },
+        {
+          rank: 5,
+          price: "$1,024 USD",
+          convertedPrice: "€946 EUR",
+          website: "Booking.com",
+          bookingUrl: "https://booking.com/...",
+          fareType: "Special Fare",
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+    
+    async function loadWidget() {
+      // Load the actual HTML component
+      const response = await fetch('./src/components/flight-results.html');
+      const html = await response.text();
+      
+      const iframe = document.getElementById('widget-frame');
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      
+      // Write the HTML
+      iframeDoc.open();
+      iframeDoc.write(html);
+      iframeDoc.close();
+      
+      // Inject the sample data after a short delay to ensure DOM is ready
+      setTimeout(() => {
+        iframe.contentWindow.openai = {
+          toolOutput: sampleData
+        };
+        
+        // Trigger the DOMContentLoaded event
+        const event = new Event('DOMContentLoaded');
+        iframe.contentWindow.document.dispatchEvent(event);
+      }, 100);
+    }
+    
+    // Auto-load on page load
+    window.addEventListener('load', () => {
+      setTimeout(loadWidget, 500);
+    });
+  </script>
+</body>
+</html>
+
+
