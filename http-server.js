@@ -299,7 +299,7 @@ app.get('/mcp', (req, res) => {
     description: 'Flight price discovery and comparison service. Users should provide flight details conversationally, which will be structured into the required format.',
     tools: [
       {
-        name: 'pricecheck',
+        name: 'flight_pricecheck',
         description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. The user must provide the specific flight they found including airline, flight numbers, airports, dates, times, and the price they saw.',
         _meta: {
           'openai/outputTemplate': 'ui://widget/flight-results.html',
@@ -366,7 +366,7 @@ app.get('/mcp', (req, res) => {
         inputSchema: {
           type: 'object',
           properties: {
-            user_request: { type: 'string', description: 'Describe your flight needs in natural language (e.g., "I want to fly from Milan to Rome on November 3rd, returning November 11th")' },
+            user_request: { type: 'string', description: 'Describe the specific flight you found and want to check for better prices (e.g., "I found LX 1612 from MXP to FCO on Nov 4th at 6:40 PM for 150 EUR")' },
             conversation_context: { type: 'string', description: 'Previous conversation context if this is a follow-up question' }
           },
           required: ['user_request']
@@ -703,7 +703,7 @@ app.post('/mcp', async (req, res) => {
       
       let cleanedArgs = null; // Store cleaned args for trip summary
       
-      if (name === 'pricecheck') {
+      if (name === 'flight_pricecheck') {
         // Validate that we have flight segments before submitting
         if (!args.trip?.legs || args.trip.legs.length === 0) {
           throw new Error('Missing flight information. Please ask the user for flight details (dates, times, flight numbers, airports) before searching.');
@@ -751,7 +751,7 @@ app.post('/mcp', async (req, res) => {
       // Format response with structured content for the widget
       let response;
       
-      if (name === 'pricecheck') {
+      if (name === 'flight_pricecheck') {
         // For pricecheck, always return the widget response format
         const enhancedResult = {
           ...result,

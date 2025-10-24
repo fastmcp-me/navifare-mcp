@@ -276,7 +276,7 @@ process.stdin.on('data', async (data) => {
         result: {
           tools: [
             {
-              name: 'pricecheck',
+              name: 'flight_pricecheck',
               description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details.',
               inputSchema: {
                 type: 'object',
@@ -354,7 +354,7 @@ process.stdin.on('data', async (data) => {
             };
           }
         }
-      } else if (name === 'pricecheck') {
+      } else if (name === 'flight_pricecheck') {
         console.error('🔍 Processing search_flights tool...');
         
         // Get the flight data from the input

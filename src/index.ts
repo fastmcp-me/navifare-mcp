@@ -8,9 +8,9 @@ import { submit_session, submit_and_poll_session } from "./navifare.js";
 const mcpServer = new McpServer({ name: "navifare-mcp", version: "0.1.0" });
 
 mcpServer.registerTool(
-  "pricecheck",
+  "flight_pricecheck",
   {
-    description: "Search for flight prices across multiple booking sources. Ask the user for ALL required flight details: airline code (2-letter), flight number, departure/arrival airports (3-letter IATA codes), departure/arrival times (HH:MM format), dates (YYYY-MM-DD), cabin class (ECONOMY/BUSINESS/FIRST), number of passengers (adults/children/infants), reference price they saw, and currency. Then submit the search and automatically poll for results.",
+    description: "Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. The user must provide the specific flight they found including airline, flight numbers, airports, dates, times, and the price they saw.",
     inputSchema: {
       trip: z.object({
         legs: z.array(
@@ -90,9 +90,9 @@ mcpServer.registerTool(
 mcpServer.registerTool(
   "format_flight_pricecheck_request",
   {
-    description: "Start a flight search by describing your travel needs in natural language. I'll ask follow-up questions to collect all required details and then search for your flight.",
+    description: "Parse flight details from natural language to prepare for price comparison. Use this when the user mentions a specific flight they found and wants to check for better prices. I'll ask follow-up questions to collect all required flight details.",
     inputSchema: {
-      user_request: z.string().describe("Describe your flight needs in natural language (e.g., 'I want to fly from Milan to Rome on November 3rd, returning November 11th')"),
+      user_request: z.string().describe("Describe the specific flight you found and want to check for better prices (e.g., 'I found LX 1612 from MXP to FCO on Nov 4th at 6:40 PM for 150 EUR')"),
       conversation_context: z.string().optional().describe("Previous conversation context if this is a follow-up question")
     },
   },
