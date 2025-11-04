@@ -1106,7 +1106,7 @@ app.get('/mcp', (req, res) => {
       },
       {
         name: 'extract_flight_from_image',
-        description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
+        description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details. ⚠️ CRITICAL: Images MUST be provided as base64-encoded strings. File IDs, file paths, or URLs will NOT work and will cause the tool to fail. You MUST convert images to base64 encoding before calling this tool.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -1117,7 +1117,7 @@ app.get('/mcp', (req, res) => {
                 properties: {
                   data: {
                     type: 'string',
-                    description: 'REQUIRED: Image data as a base64-encoded string. You MUST convert images to base64 before sending. Do NOT send file IDs (like "file_000000009ca4720aaf20f16309d0c674") or file paths. Format: Provide the raw base64 string without any data URI prefix. Example: "iVBORw0KGgoAAAANSUhEUgAA..." (correct) NOT "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." (incorrect). If you receive an image file, read it, convert it to base64 encoding, and provide only the base64 string.'
+                    description: '⚠️ CRITICAL REQUIREMENT: Image data MUST be a base64-encoded string. NO OTHER FORMAT WILL WORK. Do NOT send file IDs (like "file_000000009ca4720aaf20f16309d0c674"), file paths (like "/mnt/data/image.png"), or URLs. These will be rejected and the tool will fail. Format: Provide ONLY the raw base64 string without any data URI prefix. Example CORRECT: "iVBORw0KGgoAAAANSUhEUgAA..." (just the base64 characters). Example INCORRECT: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." (has prefix - will fail). Example INCORRECT: "file_000000009ca4720aaf20f16309d0c674" (file ID - will fail). Example INCORRECT: "/mnt/data/image.png" (file path - will fail). If you have an image file, you MUST: 1) Read the file content, 2) Convert it to base64 encoding, 3) Provide ONLY the base64 string (no prefix, no file path, no file ID).'
                   },
                   mimeType: {
                     type: 'string',
@@ -1127,28 +1127,10 @@ app.get('/mcp', (req, res) => {
                 required: ['data', 'mimeType']
               },
               minItems: 1,
-              description: 'Array of images to analyze for flight details. Each image must have base64-encoded data (or file path) and a valid mimeType.'
+              description: 'Array of images to analyze for flight details. ⚠️ CRITICAL: Each image MUST have base64-encoded data. File paths or file IDs will NOT work and will be rejected.'
             }
           },
           required: ['images']
-        }
-      },
-      {
-        name: 'convert_image_to_base64',
-        description: 'Convert an image from various sources (URL, file path, or base64 with data URI prefix) to clean base64 format. Use this tool when you have an image URL, file path accessible on the server, or base64 string with data URI prefix and need clean base64 data for extract_flight_from_image. IMPORTANT: If you\'re ChatGPT and have a file path like "/mnt/data/...", you MUST convert it to base64 on your side first (read the file and encode it) before calling this tool, as ChatGPT file paths are not accessible on remote servers. This tool downloads URLs, reads files accessible on the server, or cleans base64 strings and returns the clean base64-encoded image data.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            source: {
-              type: 'string',
-              description: 'The image source. Can be: 1) A URL (http:// or https://) - image will be downloaded and converted; 2) A file path accessible on the server (starting with / or ./) - file will be read and converted. NOTE: ChatGPT file paths like "/mnt/data/..." are NOT accessible - convert to base64 first; 3) A base64 string with data URI prefix (data:image/...) - prefix will be removed and clean base64 returned; 4) Already clean base64 - will be validated and returned as-is.'
-            },
-            mimeType: {
-              type: 'string',
-              description: 'MIME type of the image (e.g., "image/png", "image/jpeg"). If not provided, will be detected from URL/file extension or data URI prefix. Required if source is clean base64 without data URI prefix.'
-            }
-          },
-          required: ['source']
         }
       },
       {
@@ -1441,7 +1423,7 @@ app.post('/mcp', async (req, res) => {
         },
         {
           name: 'extract_flight_from_image',
-          description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
+          description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details. ⚠️ CRITICAL: Images MUST be provided as base64-encoded strings. File IDs, file paths, or URLs will NOT work and will cause the tool to fail. You MUST convert images to base64 encoding before calling this tool.',
           inputSchema: {
             type: 'object',
             properties: {
@@ -1452,7 +1434,7 @@ app.post('/mcp', async (req, res) => {
                   properties: {
                     data: {
                       type: 'string',
-                      description: 'REQUIRED: Image data as a base64-encoded string. You MUST convert images to base64 before sending. Do NOT send file IDs (like "file_000000009ca4720aaf20f16309d0c674") or file paths. Format: Provide the raw base64 string without any data URI prefix. Example: "iVBORw0KGgoAAAANSUhEUgAA..." (correct) NOT "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." (incorrect). If you receive an image file, read it, convert it to base64 encoding, and provide only the base64 string.'
+                      description: '⚠️ CRITICAL REQUIREMENT: Image data MUST be a base64-encoded string. NO OTHER FORMAT WILL WORK. Do NOT send file IDs (like "file_000000009ca4720aaf20f16309d0c674"), file paths (like "/mnt/data/image.png"), or URLs. These will be rejected and the tool will fail. Format: Provide ONLY the raw base64 string without any data URI prefix. Example CORRECT: "iVBORw0KGgoAAAANSUhEUgAA..." (just the base64 characters). Example INCORRECT: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." (has prefix - will fail). Example INCORRECT: "file_000000009ca4720aaf20f16309d0c674" (file ID - will fail). Example INCORRECT: "/mnt/data/image.png" (file path - will fail). If you have an image file, you MUST: 1) Read the file content, 2) Convert it to base64 encoding, 3) Provide ONLY the base64 string (no prefix, no file path, no file ID).'
                     },
                     mimeType: {
                       type: 'string',
@@ -1462,28 +1444,10 @@ app.post('/mcp', async (req, res) => {
                   required: ['data', 'mimeType']
                 },
                 minItems: 1,
-                description: 'Array of images to analyze for flight details. Each image must have base64-encoded data (or file path) and a valid mimeType.'
+                description: 'Array of images to analyze for flight details. ⚠️ CRITICAL: Each image MUST have base64-encoded data. File paths or file IDs will NOT work and will be rejected.'
               }
             },
             required: ['images']
-          }
-        },
-        {
-          name: 'convert_image_to_base64',
-          description: 'Convert an image from various sources (URL, file path, or base64 with data URI prefix) to clean base64 format. Use this tool when you have an image URL, file path accessible on the server, or base64 string with data URI prefix and need clean base64 data for extract_flight_from_image. IMPORTANT: If you\'re ChatGPT and have a file path like "/mnt/data/...", you MUST convert it to base64 on your side first (read the file and encode it) before calling this tool, as ChatGPT file paths are not accessible on remote servers. This tool downloads URLs, reads files accessible on the server, or cleans base64 strings and returns the clean base64-encoded image data.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              source: {
-                type: 'string',
-                description: 'The image source. Can be: 1) A URL (http:// or https://) - image will be downloaded and converted; 2) A file path accessible on the server (starting with / or ./) - file will be read and converted. NOTE: ChatGPT file paths like "/mnt/data/..." are NOT accessible - convert to base64 first; 3) A base64 string with data URI prefix (data:image/...) - prefix will be removed and clean base64 returned; 4) Already clean base64 - will be validated and returned as-is.'
-              },
-              mimeType: {
-                type: 'string',
-                description: 'MIME type of the image (e.g., "image/png", "image/jpeg"). If not provided, will be detected from URL/file extension or data URI prefix. Required if source is clean base64 without data URI prefix.'
-              }
-            },
-            required: ['source']
           }
         },
         {
@@ -1580,165 +1544,7 @@ app.post('/mcp', async (req, res) => {
       
       let result;
       
-      if (name === 'convert_image_to_base64') {
-        console.log('🔄 convert_image_to_base64 tool called!');
-        
-        const { source, mimeType } = args;
-        
-        if (!source) {
-          result = {
-            error: 'source parameter is required'
-          };
-        } else {
-          try {
-            let base64Data = null;
-            let detectedMimeType = mimeType || null;
-            
-            // Case 1: URL (http:// or https://)
-            if (source.startsWith('http://') || source.startsWith('https://')) {
-              console.log(`📥 Downloading image from URL: ${source}`);
-              try {
-                const response = await fetch(source);
-                if (!response.ok) {
-                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                const buffer = await response.arrayBuffer();
-                const imageBuffer = Buffer.from(buffer);
-                base64Data = imageBuffer.toString('base64');
-                
-                // Detect mimeType from Content-Type header or URL extension
-                if (!detectedMimeType) {
-                  const contentType = response.headers.get('content-type');
-                  if (contentType && contentType.startsWith('image/')) {
-                    detectedMimeType = contentType;
-                  } else {
-                    // Try to detect from URL extension
-                    const urlLower = source.toLowerCase();
-                    if (urlLower.includes('.png')) detectedMimeType = 'image/png';
-                    else if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) detectedMimeType = 'image/jpeg';
-                    else if (urlLower.includes('.webp')) detectedMimeType = 'image/webp';
-                    else if (urlLower.includes('.gif')) detectedMimeType = 'image/gif';
-                    else detectedMimeType = 'image/png'; // Default
-                  }
-                }
-                
-                console.log(`✅ Downloaded and converted URL to base64 (${imageBuffer.length} bytes)`);
-              } catch (urlError) {
-                result = {
-                  error: `Failed to download image from URL: ${urlError.message}`
-                };
-                throw urlError;
-              }
-            }
-            // Case 2: File path
-            else if (source.startsWith('/') || source.startsWith('./')) {
-              console.log(`📁 Reading file from path: ${source}`);
-              
-              // Special handling for ChatGPT's file paths (/mnt/data/...)
-              if (source.startsWith('/mnt/data/')) {
-                result = {
-                  error: `ChatGPT file paths (like "${source}") are not accessible on this server. You must convert the file to base64 on your side before calling this tool. Steps: 1) Read the file from /mnt/data/ using ChatGPT's file access capabilities, 2) Convert the file content to base64 encoding, 3) Call convert_image_to_base64 with the base64 string as the source (or call extract_flight_from_image directly with the base64). Alternatively, if you can upload the file to a URL, provide that URL instead.`
-                };
-                throw new Error('ChatGPT file path not accessible');
-              }
-              
-              try {
-                if (!fs.existsSync(source)) {
-                  throw new Error(`File not found: ${source}. File paths must be accessible on the server. If you're using ChatGPT, convert the file to base64 first and use that as the source instead.`);
-                }
-                const fileBuffer = fs.readFileSync(source);
-                base64Data = fileBuffer.toString('base64');
-                
-                // Detect mimeType from file extension
-                if (!detectedMimeType) {
-                  const pathLower = source.toLowerCase();
-                  if (pathLower.endsWith('.png')) detectedMimeType = 'image/png';
-                  else if (pathLower.endsWith('.jpg') || pathLower.endsWith('.jpeg')) detectedMimeType = 'image/jpeg';
-                  else if (pathLower.endsWith('.webp')) detectedMimeType = 'image/webp';
-                  else if (pathLower.endsWith('.gif')) detectedMimeType = 'image/gif';
-                  else detectedMimeType = 'image/png'; // Default
-                }
-                
-                console.log(`✅ Read and converted file to base64 (${fileBuffer.length} bytes)`);
-              } catch (fileError) {
-                result = {
-                  error: `Failed to read file: ${fileError.message}. If you're using ChatGPT, file paths like "/mnt/data/..." are not accessible on remote servers. You must read the file on ChatGPT's side and convert it to base64 before calling this tool.`
-                };
-                throw fileError;
-              }
-            }
-            // Case 3: Base64 with data URI prefix
-            else if (source.startsWith('data:image/')) {
-              console.log(`🧹 Cleaning base64 data URI prefix`);
-              const parts = source.split(',');
-              if (parts.length === 2) {
-                // Extract mimeType from prefix
-                const prefix = parts[0];
-                const mimeMatch = prefix.match(/data:image\/([^;]+)/);
-                if (mimeMatch && !detectedMimeType) {
-                  detectedMimeType = `image/${mimeMatch[1]}`;
-                }
-                base64Data = parts[1];
-                // Remove whitespace
-                base64Data = base64Data.replace(/\s/g, '');
-                console.log(`✅ Cleaned base64 data URI prefix`);
-              } else {
-                throw new Error('Invalid data URI format');
-              }
-            }
-            // Case 4: Already clean base64 (validate it)
-            else {
-              console.log(`✅ Validating clean base64 string`);
-              // Remove whitespace
-              base64Data = source.replace(/\s/g, '');
-              
-              // Validate it's base64
-              try {
-                const decoded = Buffer.from(base64Data, 'base64');
-                if (decoded.length === 0) {
-                  throw new Error('Base64 decodes to empty buffer');
-                }
-                
-                if (!detectedMimeType) {
-                  result = {
-                    error: 'mimeType is required when source is clean base64 without data URI prefix'
-                  };
-                  throw new Error('mimeType required');
-                }
-                
-                console.log(`✅ Validated clean base64 (${decoded.length} bytes)`);
-              } catch (base64Error) {
-                result = {
-                  error: `Invalid base64 data: ${base64Error.message}. Ensure source is a valid URL, file path, data URI, or base64 string.`
-                };
-                throw base64Error;
-              }
-            }
-            
-            // Ensure we have mimeType
-            if (!detectedMimeType) {
-              detectedMimeType = 'image/png'; // Default fallback
-            }
-            
-            result = {
-              message: 'Image successfully converted to base64',
-              base64: base64Data,
-              mimeType: detectedMimeType,
-              size: base64Data.length,
-              decodedSize: Buffer.from(base64Data, 'base64').length,
-              readyForExtract: true,
-              usage: `Use this base64 data with extract_flight_from_image: {"images": [{"data": "${base64Data.substring(0, 50)}...", "mimeType": "${detectedMimeType}"}]}`
-            };
-          } catch (error) {
-            if (!result || !result.error) {
-              result = {
-                error: `Failed to convert image: ${error.message}`
-              };
-            }
-            console.error('❌ Conversion error:', error);
-          }
-        }
-      } else if (name === 'extract_flight_from_image') {
+      if (name === 'extract_flight_from_image') {
         console.log('📷 extract_flight_from_image tool called!');
 
         const images = args.images;
