@@ -1105,6 +1105,24 @@ app.get('/mcp', (req, res) => {
         }
       },
       {
+        name: 'convert_image_to_base64',
+        description: 'Helper tool to convert image file references (file IDs or file paths) to base64 format. Use this when you have image file references but need base64 data for extract_flight_from_image. This tool provides instructions on how to convert files to base64.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            fileReference: {
+              type: 'string',
+              description: 'A file ID (e.g., "file_000000009ca4720aaf20f16309d0c674") or file path (e.g., "/mnt/data/image.png"). This tool will guide you on how to convert it to base64.'
+            },
+            mimeType: {
+              type: 'string',
+              description: 'The MIME type of the image (e.g., "image/png", "image/jpeg")'
+            }
+          },
+          required: ['fileReference', 'mimeType']
+        }
+      },
+      {
         name: 'extract_flight_from_image',
         description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
         inputSchema: {
@@ -1422,6 +1440,24 @@ app.post('/mcp', async (req, res) => {
           }
         },
         {
+          name: 'convert_image_to_base64',
+          description: 'Helper tool to convert image file references (file IDs or file paths) to base64 format. Use this when you have image file references but need base64 data for extract_flight_from_image. This tool provides instructions on how to convert files to base64.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              fileReference: {
+                type: 'string',
+                description: 'A file ID (e.g., "file_000000009ca4720aaf20f16309d0c674") or file path (e.g., "/mnt/data/image.png"). This tool will guide you on how to convert it to base64.'
+              },
+              mimeType: {
+                type: 'string',
+                description: 'The MIME type of the image (e.g., "image/png", "image/jpeg")'
+              }
+            },
+            required: ['fileReference', 'mimeType']
+          }
+        },
+        {
           name: 'extract_flight_from_image',
           description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
           inputSchema: {
@@ -1544,7 +1580,81 @@ app.post('/mcp', async (req, res) => {
       
       let result;
       
-      if (name === 'extract_flight_from_image') {
+      if (name === 'convert_image_to_base64') {
+        console.log('🔄 convert_image_to_base64 tool called!');
+        
+        const { fileReference, mimeType } = args;
+        
+        if (!fileReference || !mimeType) {
+          result = {
+            error: 'Both fileReference and mimeType are required.'
+          };
+        } else {
+          // Detect if it's a file ID or file path
+          const isFileId = fileReference.startsWith('file_');
+          const isFilePath = fileReference.startsWith('/') || fileReference.includes('/mnt/data/');
+          
+          let instructions = '';
+          
+          if (isFileId) {
+            instructions = `To convert file ID "${fileReference}" to base64:
+
+1. Read the file using ChatGPT's file access capabilities
+2. Load the file content into memory
+3. Encode the file content as base64 (without any data URI prefix)
+4. Call extract_flight_from_image with the base64 string
+
+Example format:
+{
+  "images": [{
+    "data": "<base64-encoded-string>",
+    "mimeType": "${mimeType}"
+  }]
+}
+
+Important: The base64 string should start with characters like "iVBORw0KGgo..." (for PNG) or "/9j/4AAQSkZJRg..." (for JPEG). Do NOT include "data:image/png;base64," prefix.`;
+          } else if (isFilePath) {
+            instructions = `To convert file path "${fileReference}" to base64:
+
+1. Read the file from the path using ChatGPT's file access capabilities
+2. Load the file content into memory
+3. Encode the file content as base64 (without any data URI prefix)
+4. Call extract_flight_from_image with the base64 string
+
+Example format:
+{
+  "images": [{
+    "data": "<base64-encoded-string>",
+    "mimeType": "${mimeType}"
+  }]
+}
+
+Important: The base64 string should start with characters like "iVBORw0KGgo..." (for PNG) or "/9j/4AAQSkZJRg..." (for JPEG). Do NOT include "data:image/png;base64," prefix.
+
+Note: If the file is not accessible on your local system, you may need to use ChatGPT's built-in image handling which automatically converts uploaded images to base64.`;
+          } else {
+            instructions = `The file reference "${fileReference}" format is not recognized. 
+
+Please provide either:
+- A file ID (e.g., "file_000000009ca4720aaf20f16309d0c674")
+- A file path (e.g., "/mnt/data/image.png")
+
+To convert to base64:
+1. Read the file content
+2. Encode it as base64 without any data URI prefix
+3. Call extract_flight_from_image with the base64 string`;
+          }
+          
+          result = {
+            message: instructions,
+            fileReference: fileReference,
+            mimeType: mimeType,
+            isFileId: isFileId,
+            isFilePath: isFilePath,
+            nextStep: 'Convert the file to base64 using the instructions above, then call extract_flight_from_image with the base64 data.'
+          };
+        }
+      } else if (name === 'extract_flight_from_image') {
         console.log('📷 extract_flight_from_image tool called!');
 
         const images = args.images;
