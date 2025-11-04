@@ -1117,7 +1117,7 @@ app.get('/mcp', (req, res) => {
                 properties: {
                   data: {
                     type: 'string',
-                    description: 'Image data as a base64-encoded string OR a file path. Base64 format: Provide the raw base64 string without any data URI prefix (e.g., "iVBORw0KGgoAAAANSUhEUgAA..." not "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."). File path format: If ChatGPT uploads files, provide the file path (e.g., "/mnt/data/image.png"). The tool will automatically detect and convert file paths to base64.'
+                    description: 'REQUIRED: Image data as a base64-encoded string. You MUST convert images to base64 before sending. Do NOT send file IDs (like "file_000000009ca4720aaf20f16309d0c674") or file paths. Format: Provide the raw base64 string without any data URI prefix. Example: "iVBORw0KGgoAAAANSUhEUgAA..." (correct) NOT "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." (incorrect). If you receive an image file, read it, convert it to base64 encoding, and provide only the base64 string.'
                   },
                   mimeType: {
                     type: 'string',
@@ -1434,7 +1434,7 @@ app.post('/mcp', async (req, res) => {
                   properties: {
                     data: {
                       type: 'string',
-                      description: 'Image data as a base64-encoded string OR a file path. Base64 format: Provide the raw base64 string without any data URI prefix (e.g., "iVBORw0KGgoAAAANSUhEUgAA..." not "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."). File path format: If ChatGPT uploads files, provide the file path (e.g., "/mnt/data/image.png"). The tool will automatically detect and convert file paths to base64.'
+                      description: 'REQUIRED: Image data as a base64-encoded string. You MUST convert images to base64 before sending. Do NOT send file IDs (like "file_000000009ca4720aaf20f16309d0c674") or file paths. Format: Provide the raw base64 string without any data URI prefix. Example: "iVBORw0KGgoAAAANSUhEUgAA..." (correct) NOT "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." (incorrect). If you receive an image file, read it, convert it to base64 encoding, and provide only the base64 string.'
                     },
                     mimeType: {
                       type: 'string',
@@ -1587,9 +1587,15 @@ app.post('/mcp', async (req, res) => {
             
             let data = img.data || '';
             
+            // Check if data is a file ID (ChatGPT sometimes passes file IDs like "file_000000009ca4720aaf20f16309d0c674")
+            if (data.startsWith('file_') && data.length > 10) {
+              console.error(`❌ Detected file ID instead of base64: ${data}`);
+              continue; // Skip file IDs - ChatGPT needs to convert to base64 first
+            }
+            
             // Check if data is a file path (ChatGPT sometimes passes file paths)
             if (data.startsWith('/') || data.startsWith('./') || data.includes('/mnt/data/')) {
-              console.log(`📁 Detected file path: ${data}, converting to base64...`);
+              console.log(`📁 Detected file path: ${data}, attempting to convert to base64...`);
               try {
                 // Check if file exists
                 if (fs.existsSync(data)) {
@@ -1598,7 +1604,7 @@ app.post('/mcp', async (req, res) => {
                   data = fileBuffer.toString('base64');
                   console.log(`✅ Successfully converted file to base64 (${fileBuffer.length} bytes)`);
                 } else {
-                  console.error(`❌ File not found: ${data}`);
+                  console.error(`❌ File not found: ${data}. ChatGPT must convert images to base64 before sending.`);
                   continue;
                 }
               } catch (fileError) {
@@ -1649,8 +1655,20 @@ app.post('/mcp', async (req, res) => {
           
           // Validate that we have at least one valid image
           if (processedImages.length === 0) {
+            const hasFileIds = images.some(img => img.data && img.data.startsWith('file_'));
+            const hasFilePaths = images.some(img => img.data && (img.data.startsWith('/') || img.data.includes('/mnt/data/')));
+            
+            let errorMessage = 'No valid images provided. ';
+            if (hasFileIds) {
+              errorMessage += 'You provided file IDs (like "file_000000009ca4720aaf20f16309d0c674") instead of base64 data. ChatGPT MUST convert images to base64 encoding before calling this tool. Read the image file, encode it as base64, and provide only the base64 string (without any data URI prefix).';
+            } else if (hasFilePaths) {
+              errorMessage += 'You provided file paths, but the files are not accessible on the server. ChatGPT MUST convert images to base64 encoding before calling this tool. Read the image file, encode it as base64, and provide only the base64 string (without any data URI prefix).';
+            } else {
+              errorMessage += 'Please ensure images are provided as base64-encoded strings (not file IDs or file paths) with proper mimeType (image/png, image/jpeg, etc).';
+            }
+            
             result = {
-              error: 'No valid images provided. Please ensure images are in base64 format or accessible file paths with proper mimeType (image/png, image/jpeg, etc).'
+              error: errorMessage
             };
           } else {
             console.log(`✅ Processed ${processedImages.length} valid image(s) out of ${images.length} provided`);
