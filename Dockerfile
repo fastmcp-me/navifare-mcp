@@ -7,13 +7,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install ALL dependencies (including dev dependencies needed for building)
+RUN npm ci
 
 # Copy source code
 COPY . .
 
-# Build the application
+# Build the application (requires TypeScript from devDependencies)
 RUN npm run build
 
 # Build the React widget
@@ -21,6 +21,9 @@ RUN cd web && npm ci && npm run build
 
 # Copy the built widget to the correct location
 RUN cp web/dist/component.js src/components/
+
+# Remove dev dependencies to reduce image size (optional but recommended)
+RUN npm prune --production
 
 # Expose port
 EXPOSE 10000
