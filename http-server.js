@@ -1152,6 +1152,19 @@ app.post('/mcp', async (req, res) => {
   console.log('📥 Received MCP request:', JSON.stringify(req.body, null, 2));
   
   try {
+    // Validate request format
+    if (!req.body || typeof req.body !== 'object') {
+      res.status(400).json({
+        jsonrpc: '2.0',
+        id: req.body?.id || null,
+        error: {
+          code: -32600,
+          message: 'Invalid Request'
+        }
+      });
+      return;
+    }
+    
     const { method, params } = req.body;
 
     function sanitizeSubmitArgs(rawArgs) {
@@ -1391,13 +1404,69 @@ app.post('/mcp', async (req, res) => {
     
     // Handle MCP protocol methods
     if (method === 'tools/list') {
-      // Return list of available tools
-      const metadata = await fetch('http://localhost:2091/mcp').then(r => r.json());
+      // Return list of available tools directly
+      const tools = [
+        {
+          name: 'flight_pricecheck',
+          description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              flightData: {
+                type: 'object',
+                description: 'Complete flight data payload containing the specific flight details the user found, including airline, flight numbers, airports, dates, times, and the price they saw'
+              }
+            },
+            required: ['flightData']
+          }
+        },
+        {
+          name: 'extract_flight_from_image',
+          description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              images: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    data: {
+                      type: 'string',
+                      description: 'Base64-encoded image data (without data:image/... prefix)'
+                    },
+                    mimeType: {
+                      type: 'string',
+                      description: 'MIME type of the image (e.g., image/jpeg, image/png)'
+                    }
+                  },
+                  required: ['data', 'mimeType']
+                },
+                minItems: 1,
+                description: 'Array of images to analyze for flight details'
+              }
+            },
+            required: ['images']
+          }
+        },
+        {
+          name: 'format_flight_pricecheck_request',
+          description: 'Parse flight details from natural language or extracted image data to format them for price comparison. Use this when the user mentions a specific flight they found and wants to check for better prices, or when extract_flight_from_image returns incomplete data. This tool will parse and format the request, asking follow-up questions if information is missing. Once complete, use the returned flightData to call flight_pricecheck. IMPORTANT: This tool is stateless - each call is independent and does not retain previous context. If you receive a needsMoreInfo response and need to provide missing data, you MUST include the complete previous flight details (from the extracted data or previous response) along with the missing information in the user_request field, otherwise Gemini will not have the flight context.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              user_request: { type: 'string', description: 'Describe the specific flight you found and want to check for better prices (e.g., "I found LX 1612 from MXP to FCO on Nov 4th at 6:40 PM for 150 EUR"). You can also paste extracted data from extract_flight_from_image here if it\'s incomplete. IMPORTANT: If providing missing data after a needsMoreInfo response, include the complete previous flight details (e.g., paste the full extracted JSON and add the missing fields) so Gemini has full context.' }
+            },
+            required: ['user_request']
+          }
+        }
+      ];
+      
       res.json({
         jsonrpc: '2.0',
         id: req.body.id,
         result: {
-          tools: metadata.tools
+          tools: tools
         }
       });
       return;
