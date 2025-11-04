@@ -1117,17 +1117,17 @@ app.get('/mcp', (req, res) => {
                 properties: {
                   data: {
                     type: 'string',
-                    description: 'Base64-encoded image data (without data:image/... prefix)'
+                    description: 'Image data as a base64-encoded string OR a file path. Base64 format: Provide the raw base64 string without any data URI prefix (e.g., "iVBORw0KGgoAAAANSUhEUgAA..." not "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."). File path format: If ChatGPT uploads files, provide the file path (e.g., "/mnt/data/image.png"). The tool will automatically detect and convert file paths to base64.'
                   },
                   mimeType: {
                     type: 'string',
-                    description: 'MIME type of the image (e.g., image/jpeg, image/png)'
+                    description: 'MIME type of the image. Required values: "image/png", "image/jpeg", "image/jpg", "image/webp", or "image/gif". Must match the actual image format.'
                   }
                 },
                 required: ['data', 'mimeType']
               },
               minItems: 1,
-              description: 'Array of images to analyze for flight details'
+              description: 'Array of images to analyze for flight details. Each image must have base64-encoded data (or file path) and a valid mimeType.'
             }
           },
           required: ['images']
@@ -1434,17 +1434,17 @@ app.post('/mcp', async (req, res) => {
                   properties: {
                     data: {
                       type: 'string',
-                      description: 'Base64-encoded image data (without data:image/... prefix)'
+                      description: 'Image data as a base64-encoded string OR a file path. Base64 format: Provide the raw base64 string without any data URI prefix (e.g., "iVBORw0KGgoAAAANSUhEUgAA..." not "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."). File path format: If ChatGPT uploads files, provide the file path (e.g., "/mnt/data/image.png"). The tool will automatically detect and convert file paths to base64.'
                     },
                     mimeType: {
                       type: 'string',
-                      description: 'MIME type of the image (e.g., image/jpeg, image/png)'
+                      description: 'MIME type of the image. Required values: "image/png", "image/jpeg", "image/jpg", "image/webp", or "image/gif". Must match the actual image format.'
                     }
                   },
                   required: ['data', 'mimeType']
                 },
                 minItems: 1,
-                description: 'Array of images to analyze for flight details'
+                description: 'Array of images to analyze for flight details. Each image must have base64-encoded data (or file path) and a valid mimeType.'
               }
             },
             required: ['images']
