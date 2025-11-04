@@ -1105,24 +1105,6 @@ app.get('/mcp', (req, res) => {
         }
       },
       {
-        name: 'convert_image_to_base64',
-        description: 'Helper tool to convert image file references (file IDs or file paths) to base64 format. Use this when you have image file references but need base64 data for extract_flight_from_image. This tool provides instructions on how to convert files to base64.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            fileReference: {
-              type: 'string',
-              description: 'A file ID (e.g., "file_000000009ca4720aaf20f16309d0c674") or file path (e.g., "/mnt/data/image.png"). This tool will guide you on how to convert it to base64.'
-            },
-            mimeType: {
-              type: 'string',
-              description: 'The MIME type of the image (e.g., "image/png", "image/jpeg")'
-            }
-          },
-          required: ['fileReference', 'mimeType']
-        }
-      },
-      {
         name: 'extract_flight_from_image',
         description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
         inputSchema: {
@@ -1149,6 +1131,24 @@ app.get('/mcp', (req, res) => {
             }
           },
           required: ['images']
+        }
+      },
+      {
+        name: 'convert_image_to_base64',
+        description: 'Convert an image from various sources (URL, file path, or base64 with data URI prefix) to clean base64 format. Use this tool when you have an image URL, file path, or base64 string with data URI prefix and need clean base64 data for extract_flight_from_image. This tool downloads URLs, reads files, or cleans base64 strings and returns the clean base64-encoded image data.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            source: {
+              type: 'string',
+              description: 'The image source. Can be: 1) A URL (http:// or https://) - image will be downloaded and converted; 2) A file path (starting with / or ./) - file will be read and converted; 3) A base64 string with data URI prefix (data:image/...) - prefix will be removed and clean base64 returned; 4) Already clean base64 - will be validated and returned as-is.'
+            },
+            mimeType: {
+              type: 'string',
+              description: 'MIME type of the image (e.g., "image/png", "image/jpeg"). If not provided, will be detected from URL/file extension or data URI prefix. Required if source is clean base64 without data URI prefix.'
+            }
+          },
+          required: ['source']
         }
       },
       {
@@ -1440,24 +1440,6 @@ app.post('/mcp', async (req, res) => {
           }
         },
         {
-          name: 'convert_image_to_base64',
-          description: 'Helper tool to convert image file references (file IDs or file paths) to base64 format. Use this when you have image file references but need base64 data for extract_flight_from_image. This tool provides instructions on how to convert files to base64.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              fileReference: {
-                type: 'string',
-                description: 'A file ID (e.g., "file_000000009ca4720aaf20f16309d0c674") or file path (e.g., "/mnt/data/image.png"). This tool will guide you on how to convert it to base64.'
-              },
-              mimeType: {
-                type: 'string',
-                description: 'The MIME type of the image (e.g., "image/png", "image/jpeg")'
-              }
-            },
-            required: ['fileReference', 'mimeType']
-          }
-        },
-        {
           name: 'extract_flight_from_image',
           description: 'Extract flight details from one or more booking screenshots/images. Upload images of flight bookings, itineraries, or confirmation emails. The tool will extract flight information and return it. If the data is complete, use it to call flight_pricecheck. If incomplete, use format_flight_pricecheck_request to ask the user for missing details.',
           inputSchema: {
@@ -1484,6 +1466,24 @@ app.post('/mcp', async (req, res) => {
               }
             },
             required: ['images']
+          }
+        },
+        {
+          name: 'convert_image_to_base64',
+          description: 'Convert an image from various sources (URL, file path, or base64 with data URI prefix) to clean base64 format. Use this tool when you have an image URL, file path, or base64 string with data URI prefix and need clean base64 data for extract_flight_from_image. This tool downloads URLs, reads files, or cleans base64 strings and returns the clean base64-encoded image data.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              source: {
+                type: 'string',
+                description: 'The image source. Can be: 1) A URL (http:// or https://) - image will be downloaded and converted; 2) A file path (starting with / or ./) - file will be read and converted; 3) A base64 string with data URI prefix (data:image/...) - prefix will be removed and clean base64 returned; 4) Already clean base64 - will be validated and returned as-is.'
+              },
+              mimeType: {
+                type: 'string',
+                description: 'MIME type of the image (e.g., "image/png", "image/jpeg"). If not provided, will be detected from URL/file extension or data URI prefix. Required if source is clean base64 without data URI prefix.'
+              }
+            },
+            required: ['source']
           }
         },
         {
@@ -1583,76 +1583,151 @@ app.post('/mcp', async (req, res) => {
       if (name === 'convert_image_to_base64') {
         console.log('🔄 convert_image_to_base64 tool called!');
         
-        const { fileReference, mimeType } = args;
+        const { source, mimeType } = args;
         
-        if (!fileReference || !mimeType) {
+        if (!source) {
           result = {
-            error: 'Both fileReference and mimeType are required.'
+            error: 'source parameter is required'
           };
         } else {
-          // Detect if it's a file ID or file path
-          const isFileId = fileReference.startsWith('file_');
-          const isFilePath = fileReference.startsWith('/') || fileReference.includes('/mnt/data/');
-          
-          let instructions = '';
-          
-          if (isFileId) {
-            instructions = `To convert file ID "${fileReference}" to base64:
-
-1. Read the file using ChatGPT's file access capabilities
-2. Load the file content into memory
-3. Encode the file content as base64 (without any data URI prefix)
-4. Call extract_flight_from_image with the base64 string
-
-Example format:
-{
-  "images": [{
-    "data": "<base64-encoded-string>",
-    "mimeType": "${mimeType}"
-  }]
-}
-
-Important: The base64 string should start with characters like "iVBORw0KGgo..." (for PNG) or "/9j/4AAQSkZJRg..." (for JPEG). Do NOT include "data:image/png;base64," prefix.`;
-          } else if (isFilePath) {
-            instructions = `To convert file path "${fileReference}" to base64:
-
-1. Read the file from the path using ChatGPT's file access capabilities
-2. Load the file content into memory
-3. Encode the file content as base64 (without any data URI prefix)
-4. Call extract_flight_from_image with the base64 string
-
-Example format:
-{
-  "images": [{
-    "data": "<base64-encoded-string>",
-    "mimeType": "${mimeType}"
-  }]
-}
-
-Important: The base64 string should start with characters like "iVBORw0KGgo..." (for PNG) or "/9j/4AAQSkZJRg..." (for JPEG). Do NOT include "data:image/png;base64," prefix.
-
-Note: If the file is not accessible on your local system, you may need to use ChatGPT's built-in image handling which automatically converts uploaded images to base64.`;
-          } else {
-            instructions = `The file reference "${fileReference}" format is not recognized. 
-
-Please provide either:
-- A file ID (e.g., "file_000000009ca4720aaf20f16309d0c674")
-- A file path (e.g., "/mnt/data/image.png")
-
-To convert to base64:
-1. Read the file content
-2. Encode it as base64 without any data URI prefix
-3. Call extract_flight_from_image with the base64 string`;
+          try {
+            let base64Data = null;
+            let detectedMimeType = mimeType || null;
+            
+            // Case 1: URL (http:// or https://)
+            if (source.startsWith('http://') || source.startsWith('https://')) {
+              console.log(`📥 Downloading image from URL: ${source}`);
+              try {
+                const response = await fetch(source);
+                if (!response.ok) {
+                  throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const buffer = await response.arrayBuffer();
+                const imageBuffer = Buffer.from(buffer);
+                base64Data = imageBuffer.toString('base64');
+                
+                // Detect mimeType from Content-Type header or URL extension
+                if (!detectedMimeType) {
+                  const contentType = response.headers.get('content-type');
+                  if (contentType && contentType.startsWith('image/')) {
+                    detectedMimeType = contentType;
+                  } else {
+                    // Try to detect from URL extension
+                    const urlLower = source.toLowerCase();
+                    if (urlLower.includes('.png')) detectedMimeType = 'image/png';
+                    else if (urlLower.includes('.jpg') || urlLower.includes('.jpeg')) detectedMimeType = 'image/jpeg';
+                    else if (urlLower.includes('.webp')) detectedMimeType = 'image/webp';
+                    else if (urlLower.includes('.gif')) detectedMimeType = 'image/gif';
+                    else detectedMimeType = 'image/png'; // Default
+                  }
+                }
+                
+                console.log(`✅ Downloaded and converted URL to base64 (${imageBuffer.length} bytes)`);
+              } catch (urlError) {
+                result = {
+                  error: `Failed to download image from URL: ${urlError.message}`
+                };
+                throw urlError;
+              }
+            }
+            // Case 2: File path
+            else if (source.startsWith('/') || source.startsWith('./')) {
+              console.log(`📁 Reading file from path: ${source}`);
+              try {
+                if (!fs.existsSync(source)) {
+                  throw new Error(`File not found: ${source}`);
+                }
+                const fileBuffer = fs.readFileSync(source);
+                base64Data = fileBuffer.toString('base64');
+                
+                // Detect mimeType from file extension
+                if (!detectedMimeType) {
+                  const pathLower = source.toLowerCase();
+                  if (pathLower.endsWith('.png')) detectedMimeType = 'image/png';
+                  else if (pathLower.endsWith('.jpg') || pathLower.endsWith('.jpeg')) detectedMimeType = 'image/jpeg';
+                  else if (pathLower.endsWith('.webp')) detectedMimeType = 'image/webp';
+                  else if (pathLower.endsWith('.gif')) detectedMimeType = 'image/gif';
+                  else detectedMimeType = 'image/png'; // Default
+                }
+                
+                console.log(`✅ Read and converted file to base64 (${fileBuffer.length} bytes)`);
+              } catch (fileError) {
+                result = {
+                  error: `Failed to read file: ${fileError.message}`
+                };
+                throw fileError;
+              }
+            }
+            // Case 3: Base64 with data URI prefix
+            else if (source.startsWith('data:image/')) {
+              console.log(`🧹 Cleaning base64 data URI prefix`);
+              const parts = source.split(',');
+              if (parts.length === 2) {
+                // Extract mimeType from prefix
+                const prefix = parts[0];
+                const mimeMatch = prefix.match(/data:image\/([^;]+)/);
+                if (mimeMatch && !detectedMimeType) {
+                  detectedMimeType = `image/${mimeMatch[1]}`;
+                }
+                base64Data = parts[1];
+                // Remove whitespace
+                base64Data = base64Data.replace(/\s/g, '');
+                console.log(`✅ Cleaned base64 data URI prefix`);
+              } else {
+                throw new Error('Invalid data URI format');
+              }
+            }
+            // Case 4: Already clean base64 (validate it)
+            else {
+              console.log(`✅ Validating clean base64 string`);
+              // Remove whitespace
+              base64Data = source.replace(/\s/g, '');
+              
+              // Validate it's base64
+              try {
+                const decoded = Buffer.from(base64Data, 'base64');
+                if (decoded.length === 0) {
+                  throw new Error('Base64 decodes to empty buffer');
+                }
+                
+                if (!detectedMimeType) {
+                  result = {
+                    error: 'mimeType is required when source is clean base64 without data URI prefix'
+                  };
+                  throw new Error('mimeType required');
+                }
+                
+                console.log(`✅ Validated clean base64 (${decoded.length} bytes)`);
+              } catch (base64Error) {
+                result = {
+                  error: `Invalid base64 data: ${base64Error.message}. Ensure source is a valid URL, file path, data URI, or base64 string.`
+                };
+                throw base64Error;
+              }
+            }
+            
+            // Ensure we have mimeType
+            if (!detectedMimeType) {
+              detectedMimeType = 'image/png'; // Default fallback
+            }
+            
+            result = {
+              message: 'Image successfully converted to base64',
+              base64: base64Data,
+              mimeType: detectedMimeType,
+              size: base64Data.length,
+              decodedSize: Buffer.from(base64Data, 'base64').length,
+              readyForExtract: true,
+              usage: `Use this base64 data with extract_flight_from_image: {"images": [{"data": "${base64Data.substring(0, 50)}...", "mimeType": "${detectedMimeType}"}]}`
+            };
+          } catch (error) {
+            if (!result || !result.error) {
+              result = {
+                error: `Failed to convert image: ${error.message}`
+              };
+            }
+            console.error('❌ Conversion error:', error);
           }
-          
-          result = {
-            message: instructions,
-            fileReference: fileReference,
-            mimeType: mimeType,
-            isFileId: isFileId,
-            isFilePath: isFilePath,
-            nextStep: 'Convert the file to base64 using the instructions above, then call extract_flight_from_image with the base64 data.'
-          };
         }
       } else if (name === 'extract_flight_from_image') {
         console.log('📷 extract_flight_from_image tool called!');
