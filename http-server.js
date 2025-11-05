@@ -181,8 +181,36 @@ Return ONLY JSON.`;
 }
 
 function transformToApiFormat(flightData) {
-  // If the flightData already has the correct structure, return it as-is
+  // If the flightData already has the correct structure, check if round trip needs splitting
   if (flightData.trip && flightData.trip.legs) {
+    // Check if we have a single leg with multiple segments that form a round trip
+    if (flightData.trip.legs.length === 1 && flightData.trip.legs[0].segments && flightData.trip.legs[0].segments.length >= 2) {
+      const segments = flightData.trip.legs[0].segments;
+      const firstSegment = segments[0];
+      const origin = firstSegment.departureAirport;
+      
+      // Check if any segment returns to origin (round trip pattern)
+      for (let i = 1; i < segments.length; i++) {
+        if (segments[i].arrivalAirport === origin) {
+          // Found round trip - split into separate legs
+          console.log(`🔄 Detected round trip in single leg, splitting into separate legs`);
+          const outboundSegments = segments.slice(0, i);
+          const returnSegments = segments.slice(i);
+          
+          return {
+            ...flightData,
+            trip: {
+              ...flightData.trip,
+              legs: [
+                { segments: outboundSegments },
+                { segments: returnSegments }
+              ]
+            }
+          };
+        }
+      }
+    }
+    
     return flightData;
   }
   
