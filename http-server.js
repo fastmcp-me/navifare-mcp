@@ -1288,20 +1288,57 @@ app.get('/mcp', (req, res) => {
   res.json({
     name: 'navifare-mcp',
     version: '0.1.0',
-    description: 'Navifare finds a better price for a specific flight the user already found. Users should provide flight details conversationally, which will be structured into the required format.',
+    description: 'Navifare finds a better price for a specific flight the user already found. Users should provide flight details conversationally, which will be structured into the required format. AI assistants should NOT use the image extraction tool if the input is an image - they should transcribe the contents of the image and use the format_flight_pricecheck_request tool to format the flight details.',
     tools: [
       {
         name: 'flight_pricecheck',
-        description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. AI assistants should NOT use the image extraction tool if the input is an image - they should transcribe the contents of the image and use the format_flight_pricecheck_request tool to format the flight details.',
+        description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. Use the format_flight_pricecheck_request tool to format the flight details if the input is a natural language text.',
         inputSchema: {
           type: 'object',
           properties: {
-            flightData: {
+            trip: {
               type: 'object',
-              description: 'Complete flight data payload containing the specific flight details the user found, including airline, flight numbers, airports, dates, times, and the price they saw'
-            }
+              properties: {
+                legs: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      segments: {
+                        type: 'array',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            airline: { type: 'string', description: 'Two-letter airline code (e.g., LX)' },
+                            flightNumber: { type: 'string', description: 'Flight number (e.g., 1612)' },
+                            departureAirport: { type: 'string', description: 'Three-letter IATA code (e.g., ZRH)' },
+                            arrivalAirport: { type: 'string', description: 'Three-letter IATA code (e.g., LHR)' },
+                            departureDate: { type: 'string', description: 'Date in YYYY-MM-DD format' },
+                            departureTime: { type: 'string', description: 'Time in HH:MM or HH:MM:SS format' },
+                            arrivalTime: { type: 'string', description: 'Time in HH:MM or HH:MM:SS format' },
+                            plusDays: { type: 'number', description: 'Days to add to arrival date (0 for same day, 1 for next day)' }
+                          },
+                          required: ['airline', 'flightNumber', 'departureAirport', 'arrivalAirport', 'departureDate', 'departureTime', 'arrivalTime', 'plusDays']
+                        }
+                      }
+                    },
+                    required: ['segments']
+                  }
+                },
+                travelClass: { type: 'string', description: 'e.g., ECONOMY, BUSINESS, FIRST' },
+                adults: { type: 'number' },
+                children: { type: 'number' },
+                infantsInSeat: { type: 'number' },
+                infantsOnLap: { type: 'number' }
+              },
+              required: ['legs', 'travelClass', 'adults', 'children', 'infantsInSeat', 'infantsOnLap']
+            },
+            source: { type: 'string', description: 'Source of the price (e.g., "ChatGPT")' },
+            price: { type: 'string', description: 'Reference price' },
+            currency: { type: 'string', description: 'Three-letter currency code (e.g., USD, EUR)' },
+            location: { type: 'string', description: 'User location (optional)' }
           },
-          required: ['flightData']
+          required: ['trip', 'source', 'price', 'currency']
         }
       },
       {
@@ -1609,16 +1646,53 @@ app.post('/mcp', async (req, res) => {
       const tools = [
         {
           name: 'flight_pricecheck',
-          description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details.',
+          description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. Use the format_flight_pricecheck_request tool to format the flight details if the input is a natural language text.',
           inputSchema: {
             type: 'object',
             properties: {
-              flightData: {
+              trip: {
                 type: 'object',
-                description: 'Complete flight data payload containing the specific flight details the user found, including airline, flight numbers, airports, dates, times, and the price they saw'
-              }
+                properties: {
+                  legs: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        segments: {
+                          type: 'array',
+                          items: {
+                            type: 'object',
+                            properties: {
+                              airline: { type: 'string', description: 'Two-letter airline code (e.g., LX)' },
+                              flightNumber: { type: 'string', description: 'Flight number (e.g., 1612)' },
+                              departureAirport: { type: 'string', description: 'Three-letter IATA code (e.g., ZRH)' },
+                              arrivalAirport: { type: 'string', description: 'Three-letter IATA code (e.g., LHR)' },
+                              departureDate: { type: 'string', description: 'Date in YYYY-MM-DD format' },
+                              departureTime: { type: 'string', description: 'Time in HH:MM or HH:MM:SS format' },
+                              arrivalTime: { type: 'string', description: 'Time in HH:MM or HH:MM:SS format' },
+                              plusDays: { type: 'number', description: 'Days to add to arrival date (0 for same day, 1 for next day)' }
+                            },
+                            required: ['airline', 'flightNumber', 'departureAirport', 'arrivalAirport', 'departureDate', 'departureTime', 'arrivalTime', 'plusDays']
+                          }
+                        }
+                      },
+                      required: ['segments']
+                    }
+                  },
+                  travelClass: { type: 'string', description: 'e.g., ECONOMY, BUSINESS, FIRST' },
+                  adults: { type: 'number' },
+                  children: { type: 'number' },
+                  infantsInSeat: { type: 'number' },
+                  infantsOnLap: { type: 'number' }
+                },
+                required: ['legs', 'travelClass', 'adults', 'children', 'infantsInSeat', 'infantsOnLap']
+              },
+              source: { type: 'string', description: 'Source of the price (e.g., "ChatGPT")' },
+              price: { type: 'string', description: 'Reference price' },
+              currency: { type: 'string', description: 'Three-letter currency code (e.g., USD, EUR)' },
+              location: { type: 'string', description: 'User location (optional)' }
             },
-            required: ['flightData']
+            required: ['trip', 'source', 'price', 'currency']
           }
         },
         {
@@ -1978,13 +2052,14 @@ app.post('/mcp', async (req, res) => {
       } else if (name === 'flight_pricecheck') {
         console.log('🔍 Processing flight_pricecheck tool...');
         
-        // Get the flight data from the input
-        const flightData = args.flightData;
-        
-        // Preserve the source from the formatted request (or default to MCP)
-        const searchData = {
-          ...flightData,
-          source: flightData.source || 'MCP'
+        // The args now directly contain trip, source, price, currency, location
+        // Support both old format (flightData) and new format (direct properties)
+        const searchData = args.flightData || {
+          trip: args.trip,
+          source: args.source || 'MCP',
+          price: args.price,
+          currency: args.currency,
+          location: args.location
         };
         
         console.log('📤 Search flights payload:', JSON.stringify(searchData, null, 2));
