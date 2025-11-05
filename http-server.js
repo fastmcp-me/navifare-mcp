@@ -2,7 +2,7 @@
 
 /**
  * HTTP Server for Navifare MCP Server
- * Implements MCP protocol over HTTP for ChatGPT integration
+ * Implements MCP protocol over HTTP for MCP client integration
  * Based on OpenAI Apps SDK deployment guidelines
  */
 
@@ -1021,7 +1021,7 @@ function transformExtractedToFlightData(extractedData) {
   return transformedData;
 }
 
-// Enable CORS for ChatGPT
+// Enable CORS for MCP clients
 app.use(cors({
   origin: '*',
   credentials: true
@@ -1587,13 +1587,13 @@ app.post('/mcp', async (req, res) => {
             
             let data = img.data || '';
             
-            // Check if data is a file ID (ChatGPT sometimes passes file IDs like "file_000000009ca4720aaf20f16309d0c674")
+            // Check if data is a file ID (some clients may pass file IDs like "file_000000009ca4720aaf20f16309d0c674")
             if (data.startsWith('file_') && data.length > 10) {
               console.error(`❌ Detected file ID instead of base64: ${data}`);
-              continue; // Skip file IDs - ChatGPT needs to convert to base64 first
+              continue; // Skip file IDs - the client must convert to base64 first
             }
             
-            // Check if data is a file path (ChatGPT sometimes passes file paths)
+            // Check if data is a file path (some clients may pass file paths)
             if (data.startsWith('/') || data.startsWith('./') || data.includes('/mnt/data/')) {
               console.log(`📁 Detected file path: ${data}, attempting to convert to base64...`);
               try {
@@ -1604,7 +1604,7 @@ app.post('/mcp', async (req, res) => {
                   data = fileBuffer.toString('base64');
                   console.log(`✅ Successfully converted file to base64 (${fileBuffer.length} bytes)`);
                 } else {
-                  console.error(`❌ File not found: ${data}. ChatGPT must convert images to base64 before sending.`);
+                  console.error(`❌ File not found: ${data}. The client must convert images to base64 before sending.`);
                   continue;
                 }
               } catch (fileError) {
@@ -1660,9 +1660,9 @@ app.post('/mcp', async (req, res) => {
             
             let errorMessage = 'No valid images provided. ';
             if (hasFileIds) {
-              errorMessage += 'You provided file IDs (like "file_000000009ca4720aaf20f16309d0c674") instead of base64 data. ChatGPT MUST convert images to base64 encoding before calling this tool. Read the image file, encode it as base64, and provide only the base64 string (without any data URI prefix).';
+              errorMessage += 'You provided file IDs (like "file_000000009ca4720aaf20f16309d0c674") instead of base64 data. The client MUST convert images to base64 encoding before calling this tool. Read the image file, encode it as base64, and provide only the base64 string (without any data URI prefix).';
             } else if (hasFilePaths) {
-              errorMessage += 'You provided file paths, but the files are not accessible on the server. ChatGPT MUST convert images to base64 encoding before calling this tool. Read the image file, encode it as base64, and provide only the base64 string (without any data URI prefix).';
+              errorMessage += 'You provided file paths, but the files are not accessible on the server. The client MUST convert images to base64 encoding before calling this tool. Read the image file, encode it as base64, and provide only the base64 string (without any data URI prefix).';
             } else {
               errorMessage += 'Please ensure images are provided as base64-encoded strings (not file IDs or file paths) with proper mimeType (image/png, image/jpeg, etc).';
             }
@@ -1903,7 +1903,7 @@ app.listen(PORT, () => {
 ║  MCP:       http://localhost:${PORT}/mcp                          ║
 ║  Health:    http://localhost:${PORT}/health                       ║
 ║                                                                ║
-║  Ready for ChatGPT integration via ngrok!                     ║
+║  Ready for MCP client integration via ngrok!                     ║
 ║                                                                ║
 ╚════════════════════════════════════════════════════════════════╝
   `);
@@ -1912,7 +1912,7 @@ app.listen(PORT, () => {
   console.log('   1. Run: ngrok http 2091');
   console.log('   2. Copy the ngrok HTTPS URL');
   console.log('   3. Add /mcp to the end of the URL');
-  console.log('   4. Configure in ChatGPT settings\n');
+  console.log('   4. Configure in your MCP client settings\n');
 });
 
 // Graceful shutdown
