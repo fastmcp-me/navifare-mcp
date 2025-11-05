@@ -1292,7 +1292,7 @@ app.get('/mcp', (req, res) => {
     tools: [
       {
         name: 'flight_pricecheck',
-        description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. AI assistants should NOT use the image extraction tool if the input is an image - they should transcribe the contaets of ths image and use the format_flight_pricecheck_request tool to format the flight details.',
+        description: 'Find a better price for a specific flight the user has already found. This tool searches multiple booking sources to compare prices and find cheaper alternatives for the exact same flight details. AI assistants should NOT use the image extraction tool if the input is an image - they should transcribe the contents of the image and use the format_flight_pricecheck_request tool to format the flight details.',
         inputSchema: {
           type: 'object',
           properties: {
