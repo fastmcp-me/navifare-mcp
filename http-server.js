@@ -1713,7 +1713,7 @@ app.post('/mcp', async (req, res) => {
                       required: ['segments']
                     }
                   },
-                  travelClass: { type: 'string', description: 'e.g., ECONOMY, BUSINESS, FIRST' },
+                  travelClass: { type: 'string', description: 'e.g., ECONOMY, PREMIUM_ECONOMY, BUSINESS, FIRST' },
                   adults: { type: 'number' },
                   children: { type: 'number' },
                   infantsInSeat: { type: 'number' },
@@ -1724,9 +1724,9 @@ app.post('/mcp', async (req, res) => {
               source: { type: 'string', description: 'Source of the price (e.g., "ChatGPT")' },
               price: { type: 'string', description: 'Reference price' },
               currency: { type: 'string', description: 'Three-letter currency code (e.g., USD, EUR)' },
-              location: { type: 'string', description: 'User location (optional)' }
+              location: { type: 'string', description: 'User location, two letters, e.g. IT. If unsure, use VA)' }
             },
-            required: ['trip', 'source', 'price', 'currency']
+            required: ['trip', 'source', 'price', 'currency', 'location']
           }
         },
         // DEACTIVATED: Image extraction tool (commented out but kept for future use)
