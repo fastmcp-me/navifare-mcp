@@ -1288,7 +1288,7 @@ app.get('/mcp', (req, res) => {
   res.json({
     name: 'navifare-mcp',
     version: '0.1.0',
-    description: 'Navifare finds a better price for a specific flight the user already found. Users should provide flight details conversationally, which will be structured into the required format. AI assistants should NOT use the image extraction tool if the input is an image - they should transcribe the contents of the image and use the format_flight_pricecheck_request tool to format the flight details.',
+    description: 'Navifare finds a better price for a specific flight the user already found. Users should provide flight details conversationally, which will be structured into the required format.',
     tools: [
       {
         name: 'flight_pricecheck',
