@@ -1,6 +1,6 @@
 {
   "name": "navifare-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "mcpName": "io.github.simonenavifare/navifare-mcp",
   "type": "module",
   "main": "dist/index.js",
