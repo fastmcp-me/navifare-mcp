@@ -51,6 +51,7 @@ mcpServer.registerTool(
   {
     description: "Create a price discovery session in Navifare",
     inputSchema: {
+      location: z.string().optional().describe("User's country code (2-letter ISO, e.g., 'ZZ', 'CH', 'US')"),
       trip: z.object({
         legs: z.array(
           z.object({
@@ -77,7 +78,6 @@ mcpServer.registerTool(
       source: z.string(),
       price: z.string(),
       currency: z.string(),
-      location: z.string().optional(),
     },
   },
   async (input: any) => {

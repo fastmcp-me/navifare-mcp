@@ -101,3 +101,6 @@ node test-streamable-http.js
 - The API error in tests is unrelated to streaming (Navifare API validation)
 - Streaming works correctly - the error handling properly sends SSE error events
 
+
+
+

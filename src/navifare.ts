@@ -27,14 +27,21 @@ export async function submit_session(input: any) {
         try {
           errorJson = JSON.parse(errorText);
           console.error(`❌ Navifare API error response (${res.status}) [JSON]:`, JSON.stringify(errorJson, null, 2));
+          
+          // If it's an error object, extract the message
+          if (errorJson.is_error || errorJson.type === 'http_error') {
+            const errorMsg = errorJson.message || `API error ${res.status}`;
+            errorText = `Navifare API error ${res.status}: ${errorMsg}`;
+          } else {
           errorText = JSON.stringify(errorJson, null, 2);
+          }
         } catch {
           // Not JSON, use as-is
           console.error(`❌ Navifare API error response (${res.status}) [Text]:`, errorText);
         }
       } else {
         console.error(`❌ Navifare API error response (${res.status}): (empty response body)`);
-        errorText = '(empty response body)';
+        errorText = `Navifare API error ${res.status}: (empty response body)`;
       }
     } catch (error) {
       console.error(`❌ Failed to read error response body:`, error);
@@ -45,7 +52,41 @@ export async function submit_session(input: any) {
     console.error(`❌ Throwing error: ${errorMessage}`);
     throw new Error(errorMessage);
   }
-  return res.json();
+  
+  // Parse response
+  let responseData;
+  try {
+    const responseText = await res.text();
+    console.error(`📥 Response body (${responseText.length} chars):`, responseText.substring(0, 500));
+    
+    if (!responseText || !responseText.trim()) {
+      throw new Error(`Navifare API returned empty response body (status ${res.status})`);
+    }
+    
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (parseError) {
+      throw new Error(`Navifare API returned invalid JSON (status ${res.status}): ${responseText.substring(0, 200)}`);
+    }
+  } catch (error: any) {
+    // If we couldn't parse, it's already an error
+    if (error.message.includes('Navifare API')) {
+      throw error;
+    }
+    throw new Error(`Failed to read Navifare API response: ${error.message}`);
+  }
+  
+  // Check if the response body itself is an error object (even with 200 status)
+  if (responseData && typeof responseData === 'object') {
+    if (responseData.is_error || responseData.type === 'http_error') {
+      const errorMsg = responseData.message || `API error ${res.status}`;
+      const errorCode = responseData.code || res.status;
+      console.error(`❌ Navifare API returned error object in response body:`, JSON.stringify(responseData, null, 2));
+      throw new Error(`Navifare API error ${errorCode}: ${errorMsg}`);
+    }
+  }
+  
+  return responseData;
 }
 
 export async function get_session_results(request_id: string) {

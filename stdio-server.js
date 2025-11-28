@@ -31,6 +31,239 @@ function getGeminiAI() {
 }
 
 // Helper function to parse natural language flight requests using Gemini
+const MONTH_MAP = {
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11
+};
+
+const CURRENCY_SYMBOL_MAP = {
+  '€': 'EUR',
+  '$': 'USD',
+  '£': 'GBP',
+  '¥': 'JPY',
+};
+
+function parseDateToIso(dateStr) {
+  if (!dateStr) return null;
+  const match = dateStr.trim().match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const monthKey = match[2].slice(0, 3).toLowerCase();
+  const monthIndex = MONTH_MAP[monthKey];
+  const year = Number(match[3]);
+  if (!Number.isFinite(day) || !Number.isFinite(year) || monthIndex === undefined) {
+    return null;
+  }
+  const utcDate = new Date(Date.UTC(year, monthIndex, day));
+  if (Number.isNaN(utcDate.getTime())) {
+    return null;
+  }
+  return utcDate.toISOString().split('T')[0];
+}
+
+function parseTimeTo24Hour(timeStr) {
+  if (!timeStr) return null;
+  const trimmed = timeStr.trim();
+  const meridiemMatch = trimmed.match(/([AP]M)$/i);
+  const meridiem = meridiemMatch ? meridiemMatch[1].toUpperCase() : null;
+  const timePart = meridiem ? trimmed.slice(0, -meridiem.length).trim() : trimmed;
+  const parts = timePart.split(':');
+  if (parts.length < 2) return null;
+  let hours = Number(parts[0]);
+  const minutes = Number(parts[1]);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+  if (meridiem) {
+    if (meridiem === 'AM') {
+      hours = hours % 12;
+    } else if (meridiem === 'PM') {
+      hours = hours % 12 + 12;
+    }
+  }
+  hours = (hours + 24) % 24;
+  const paddedH = String(hours).padStart(2, '0');
+  const paddedM = String(minutes).padStart(2, '0');
+  return `${paddedH}:${paddedM}:00`;
+}
+
+function parseBestPriceFromText(text) {
+  if (!text) return null;
+  const priceMatch = text.match(/Best price:\s*([^0-9\s]*)\s*([\d.,]+)/i);
+  if (!priceMatch) {
+    return null;
+  }
+  const symbol = priceMatch[1]?.trim() ?? '';
+  const amountRaw = priceMatch[2]?.trim() ?? '';
+  const numeric = Number(amountRaw.replace(/[^\d,.]/g, '').replace(',', '.'));
+  if (!Number.isFinite(numeric)) {
+    return null;
+  }
+  let currency = null;
+  if (symbol) {
+    currency = CURRENCY_SYMBOL_MAP[symbol] ?? null;
+  }
+  if (!currency) {
+    const lineSegment = priceMatch[0] ?? '';
+    const codeMatch = lineSegment.match(/\b([A-Z]{3})\b/);
+    if (codeMatch) {
+      currency = codeMatch[1];
+    }
+  }
+  return {
+    amount: numeric,
+    currency: currency ?? 'EUR',
+  };
+}
+
+function fallbackParseSegments(userRequest) {
+  const lines = userRequest.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  if (lines.length === 0) {
+    console.error('🛟 Fallback parser: no lines detected in user request');
+    return null;
+  }
+
+  const legSegments = [];
+  let currentLegIndex = 0;
+
+  const segmentRegex = /Flight\s+([A-Z0-9]+)\s+from\s+([A-Z]{3})(?:\s*\([^)]+\))?\s+to\s+([A-Z]{3})(?:\s*\([^)]+\))?\s+departing\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4}),\s*([0-9]{1,2}:[0-9]{2}(?:\s*[AP]M)?)\s+and\s+arriving\s+(\d{1,2}\s+[A-Za-z]+\s+\d{4}),\s*([0-9]{1,2}:[0-9]{2}(?:\s*[AP]M)?)/i;
+
+  lines.forEach(line => {
+    if (/return itinerary/i.test(line)) {
+      currentLegIndex = 1;
+      return;
+    }
+    if (/outbound itinerary/i.test(line)) {
+      currentLegIndex = 0;
+      return;
+    }
+
+    const segmentMatch = line.match(segmentRegex);
+    if (!segmentMatch) {
+      return;
+    }
+
+    const [, fullFlight, departureAirport, arrivalAirport, departureDateStr, departureTimeStr, arrivalDateStr, arrivalTimeStr] = segmentMatch;
+
+    const airlineMatch = fullFlight.match(/^([A-Z]{1,3})(\d{1,4})$/i);
+    if (!airlineMatch) {
+      return;
+    }
+    const airlineCode = airlineMatch[1].toUpperCase();
+    const flightNumber = airlineMatch[2];
+
+    const departureDateIso = parseDateToIso(departureDateStr);
+    const arrivalDateIso = parseDateToIso(arrivalDateStr);
+    const departureTime = parseTimeTo24Hour(departureTimeStr);
+    const arrivalTime = parseTimeTo24Hour(arrivalTimeStr);
+
+    if (!departureDateIso || !arrivalDateIso || !departureTime || !arrivalTime) {
+      return;
+    }
+
+    const depDateObj = new Date(`${departureDateIso}T00:00:00Z`);
+    const arrDateObj = new Date(`${arrivalDateIso}T00:00:00Z`);
+    const plusDays = Math.max(0, Math.round((arrDateObj.getTime() - depDateObj.getTime()) / (24 * 60 * 60 * 1000)));
+
+    if (!legSegments[currentLegIndex]) {
+      legSegments[currentLegIndex] = [];
+    }
+
+    legSegments[currentLegIndex].push({
+      airline: airlineCode,
+      flightNumber,
+      departureAirport: departureAirport.toUpperCase(),
+      arrivalAirport: arrivalAirport.toUpperCase(),
+      departureDate: departureDateIso,
+      departureTime,
+      arrivalTime,
+      plusDays,
+    });
+  });
+
+  const legs = legSegments.filter(segments => Array.isArray(segments) && segments.length > 0).map(segments => ({ segments }));
+
+  if (legs.length === 0) {
+    console.error('🛟 Fallback parser: no flight segments matched regex pattern');
+    return null;
+  }
+
+  console.error(`🛟 Fallback parser: extracted ${legs.length} leg(s)`);
+  return legs;
+}
+
+function fallbackParseFlightRequest(userRequest) {
+  const legs = fallbackParseSegments(userRequest);
+  if (!legs) {
+    console.error('🛟 Fallback parser: unable to extract any legs from request');
+    return null;
+  }
+
+  const priceInfo = parseBestPriceFromText(userRequest);
+  if (priceInfo) {
+    console.error(`🛟 Fallback parser: detected price ${priceInfo.amount} ${priceInfo.currency}`);
+  } else {
+    console.error('🛟 Fallback parser: no explicit price detected; defaulting to 0.00 EUR');
+  }
+  const priceAmount = priceInfo?.amount ?? null;
+  const currency = priceInfo?.currency ?? 'EUR';
+  const formattedPrice = priceAmount !== null ? priceAmount.toFixed(2) : null;
+
+  const flightData = {
+    trip: {
+      legs,
+      travelClass: 'ECONOMY',
+      adults: 1,
+      children: 0,
+      infantsInSeat: 0,
+      infantsOnLap: 0,
+    },
+    source: 'MCP',
+    price: formattedPrice ?? '0.00',
+    currency,
+    location: 'XX',
+  };
+
+  const missingFields = [];
+  legs.forEach((leg, legIndex) => {
+    leg.segments.forEach((segment, segmentIndex) => {
+      if (!segment.airline) missingFields.push(`airline code for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+      if (!segment.flightNumber) missingFields.push(`flight number for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+      if (!segment.departureAirport) missingFields.push(`departure airport for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+      if (!segment.arrivalAirport) missingFields.push(`arrival airport for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+      if (!segment.departureDate) missingFields.push(`departure date for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+      if (!segment.departureTime) missingFields.push(`departure time for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+      if (!segment.arrivalTime) missingFields.push(`arrival time for leg ${legIndex + 1}, segment ${segmentIndex + 1}`);
+    });
+  });
+
+  if (missingFields.length > 0) {
+    console.error('🛟 Fallback parser: missing fields identified:', missingFields);
+    return {
+      needsMoreInfo: true,
+      message: `I extracted some flight details, but I still need: ${missingFields.join(', ')}.`,
+      missingFields,
+      flightData,
+    };
+  }
+
+  console.error('🛟 Fallback parser: successfully extracted complete flight data');
+  return {
+    needsMoreInfo: false,
+    flightData,
+  };
+}
+
 async function parseFlightRequest(userRequest) {
   try {
             console.error('🔍 Starting Gemini request...');
@@ -206,6 +439,12 @@ Return ONLY JSON.`;
             console.error('❌ Error type:', error.constructor.name);
             console.error('❌ Error occurred at:', new Date().toISOString());
     
+    const fallbackResult = fallbackParseFlightRequest(userRequest);
+    if (fallbackResult) {
+      console.error('🛟 Using fallback parser result:', JSON.stringify(fallbackResult, null, 2));
+      return fallbackResult;
+    }
+
     // Fallback to basic parsing if Gemini fails
     return {
       needsMoreInfo: true,
@@ -216,6 +455,75 @@ Return ONLY JSON.`;
 }
 
 // Helper function to transform parsed data to the exact API format
+const ISO_DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseIsoDate(dateStr) {
+  if (typeof dateStr !== 'string' || !ISO_DATE_REGEX.test(dateStr)) {
+    return null;
+  }
+
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function validateTripDates(args) {
+  if (!args?.trip?.legs?.length) {
+    throw new Error('Trip legs are required to search for flights. Please provide at least one leg with complete segment details.');
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  let latestOutboundDate = null;
+  let earliestReturnDate = null;
+
+  args.trip.legs.forEach((leg, legIndex) => {
+    if (!leg?.segments?.length) {
+      throw new Error(`Leg ${legIndex + 1} is missing flight segments. Please include the airline, flight number, airports, and dates for each segment.`);
+    }
+
+    leg.segments.forEach((segment, segmentIndex) => {
+      const context = `leg ${legIndex + 1}, segment ${segmentIndex + 1}`;
+      const dateStr = segment?.departureDate;
+      const parsedDate = parseIsoDate(dateStr || '');
+
+      if (!parsedDate) {
+        throw new Error(`Invalid departureDate for ${context}. Dates must use YYYY-MM-DD format and represent a real calendar date.`);
+      }
+
+      if (parsedDate.getTime() < today.getTime()) {
+        throw new Error(`The departure date ${dateStr} in ${context} is in the past. Please provide a future date to continue.`);
+      }
+
+      if (legIndex === 0) {
+        if (!latestOutboundDate || parsedDate.getTime() > latestOutboundDate.getTime()) {
+          latestOutboundDate = parsedDate;
+        }
+      } else if (!earliestReturnDate || parsedDate.getTime() < earliestReturnDate.getTime()) {
+        earliestReturnDate = parsedDate;
+      }
+    });
+  });
+
+  if (
+    earliestReturnDate &&
+    latestOutboundDate &&
+    earliestReturnDate.getTime() < latestOutboundDate.getTime()
+  ) {
+    throw new Error('Return segments must depart on or after the outbound segments. Please adjust the return dates.');
+  }
+}
+
 function sanitizeSubmitArgs(rawArgs) {
   if (!rawArgs || typeof rawArgs !== 'object') return rawArgs;
   const args = { ...rawArgs };
@@ -309,6 +617,8 @@ function sanitizeSubmitArgs(rawArgs) {
       }
     }
   }
+
+  validateTripDates(args);
 
   return args;
 }
