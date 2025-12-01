@@ -1,6 +1,6 @@
 # Navifare MCP Server
 
-**Version**: 0.1.0
+**Version**: 0.1.4
 
 Navifare finds a better price for a specific flight the user already found. Users should provide flight details conversationally, which will be structured into the required format.
 
