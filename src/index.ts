@@ -5,7 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio";
 import { z } from "zod";
 import { submit_session, get_session_results, submit_and_poll_session } from "./navifare.js";
 
-const mcpServer = new McpServer({ name: "navifare-mcp", version: "0.1.4" });
+const mcpServer = new McpServer({ name: "navifare-mcp", version: "0.1.5" });
 
 mcpServer.registerTool(
   "search_flights",

@@ -1,290 +1,295 @@
-# Navifare MCP Server - Complete Usage Examples
+# Navifare MCP Server – Usage Examples
 
 ## Overview
 
-The Navifare MCP server now includes three powerful tools that work together to provide a complete flight price discovery workflow:
+The current Navifare MCP server exposes **two primary tools**:
 
-1. **`extract_image`** - Extract flight details from booking screenshots
-2. **`submit_session`** - Create price discovery sessions (simplified JSON format)
-3. **`get_session_results`** - Retrieve results with interactive UI
+1. **`format_flight_pricecheck_request`** – Parse and normalize flight details from natural language text.
+2. **`flight_pricecheck`** – Search multiple booking sources for better prices for a specific flight.
 
-## Complete Workflow Example
+If you want to work with **screenshots or images**, the recommended pattern is:
 
-### Step 1: Extract Flight Details from Image
+1. Send the image to your own LLM with vision (Claude, Gemini, etc.).
+2. Ask the LLM to produce a clear text description of the flight details (airline, flight number, airports, dates, times, price, passengers, cabin).
+3. Pass that **text** into the `format_flight_pricecheck_request` tool as `user_request`.
+4. Use the formatted output from that tool to call `flight_pricecheck`.
+
+This document only describes the **current** workflow using these two tools.
+
+---
+
+## 1. Pure Text Workflow (Recommended)
+
+### Step 1: Collect flight details from the user
+
+You (or the LLM using this MCP server) should ask the user for:
+
+- Airline and flight number  
+- Departure and arrival airports (IATA codes)  
+- Departure date and time  
+- Return details (if round‑trip)  
+- Cabin class  
+- Number of passengers  
+- Price they saw and currency  
+
+Example user message:
+
+> I found flight XZ 2020 from MXP to FCO on December 16, 2025, departing at 07:10 and arriving at 08:25.  
+> Return XZ 2021 from FCO to MXP on December 25, 2025, at 09:45 arriving 11:00.  
+> 1 adult, economy, price is 84 EUR.
+
+---
+
+### Step 2: Call `format_flight_pricecheck_request`
+
+Tool: `format_flight_pricecheck_request`
 
 ```json
 {
-  "imageBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
-  "mimeType": "image/jpeg"
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "format_flight_pricecheck_request",
+    "arguments": {
+      "user_request": "I found an Aeroitalia flight XZ2020 from FCO to MXP leaving tomorrow at 19.31 and returning with XZ2021 MXP to FCO next Friday at 10.11. 1 adult, economy, the best fare was 221 EUR"
+    }
+  }
 }
 ```
 
-**Response:**
+**Typical response shape (simplified):**
+
 ```json
 {
   "content": [
     {
       "type": "text",
-      "text": "Successfully extracted flight details from image.\n\nFlight Summary:\n- 1 flight segment(s)\n- economy class\n- 1 adult(s), 0 child(ren)\n- Reference price: 847 USD\n\nUse the submit_session tool with this extracted data to search for better prices."
+      "text": "Flight request parsed successfully. You can now call flight_pricecheck."
     }
   ],
-  "structuredContent": {
-    "legs": [
-      {
-        "segments": [
+  "formattedRequest": {
+    "trip": {
+      "legs": [
+        {
+          "segments": [
+            {
+              "airline": "XZ",
+              "flightNumber": "2020",
+              "departureAirport": "FCO",
+              "arrivalAirport": "MXP",
+              "departureDate": "2025-12-16",
+              "departureTime": "19:31",
+              "arrivalTime": "20:45",
+              "plusDays": 0
+            }
+          ]
+        },
+        {
+          "segments": [
+            {
+              "airline": "XZ",
+              "flightNumber": "2021",
+              "departureAirport": "MXP",
+              "arrivalAirport": "FCO",
+              "departureDate": "2025-12-22",
+              "departureTime": "10:11",
+              "arrivalTime": "11:25",
+              "plusDays": 0
+            }
+          ]
+        }
+      ],
+      "travelClass": "ECONOMY",
+      "adults": 1,
+      "children": 0,
+      "infantsInSeat": 0,
+      "infantsOnLap": 0
+    },
+    "source": "Claude",
+    "price": "221",
+    "currency": "EUR",
+    "location": "IT"
+  }
+}
+```
+
+If information is missing, the tool can indicate which fields are missing so the LLM can ask follow‑up questions.
+
+---
+
+### Step 3: Call `flight_pricecheck`
+
+Use the `formattedRequest` as input to `flight_pricecheck`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "flight_pricecheck",
+    "arguments": {
+      "trip": {
+        "legs": [
           {
-            "airline": "United Airlines",
-            "flightNumber": "1612",
-            "departureAirport": "ZUR",
-            "arrivalAirport": "JFK",
-            "departureDate": "2025-12-15",
-            "departureTime": "14:30",
-            "arrivalTime": "17:45",
-            "plusDays": 0
+            "segments": [
+              {
+                "airline": "XZ",
+                "flightNumber": "2020",
+                "departureAirport": "FCO",
+                "arrivalAirport": "MXP",
+                "departureDate": "2025-12-16",
+                "departureTime": "19:31",
+                "arrivalTime": "20:45",
+                "plusDays": 0
+              }
+            ]
+          },
+          {
+            "segments": [
+              {
+                "airline": "XZ",
+                "flightNumber": "2021",
+                "departureAirport": "MXP",
+                "arrivalAirport": "FCO",
+                "departureDate": "2025-12-22",
+                "departureTime": "10:11",
+                "arrivalTime": "11:25",
+                "plusDays": 0
+              }
+            ]
           }
-        ]
-      }
-    ],
-    "travelClass": "economy",
-    "adults": 1,
-    "children": 0,
-    "infantsInSeat": 0,
-    "infantsOnLap": 0,
-    "source": "image-extraction",
-    "price": "847",
-    "currency": "USD",
-    "location": "Unknown"
+        ],
+        "travelClass": "ECONOMY",
+        "adults": 1,
+        "children": 0,
+        "infantsInSeat": 0,
+        "infantsOnLap": 0
+      },
+      "source": "user",
+      "price": "221",
+      "currency": "EUR",
+      "location": "IT"
+    }
   }
 }
 ```
 
-### Step 2: Submit Price Discovery Session
+**Typical response shape (simplified):**
 
-Use the extracted data directly (no need to restructure):
-
-```json
-{
-  "legs": [
-    {
-      "segments": [
-        {
-          "airline": "United Airlines",
-          "flightNumber": "1612",
-          "departureAirport": "ZUR",
-          "arrivalAirport": "JFK",
-          "departureDate": "2025-12-15",
-          "departureTime": "14:30",
-          "arrivalTime": "17:45",
-          "plusDays": 0
-        }
-      ]
-    }
-  ],
-  "travelClass": "economy",
-  "adults": 1,
-  "children": 0,
-  "infantsInSeat": 0,
-  "infantsOnLap": 0,
-  "source": "image-extraction",
-  "price": "847",
-  "currency": "USD",
-  "location": "Unknown"
-}
-```
-
-**Response:**
 ```json
 {
   "content": [
     {
       "type": "text",
-      "text": "Successfully created price discovery session.\nSession ID: session-123-456\nStatus: processing\n\nUse the get_session_results tool with this request_id to retrieve pricing results."
+      "text": "I found 5 offers for your flight. The best is 178 EUR on ExampleTravel."
     }
   ],
-  "structuredContent": {
-    "request_id": "session-123-456",
-    "status": "processing",
-    "message": "Session created successfully"
+  "searchResult": {
+    "request_id": "req_abc123",
+    "status": "COMPLETED",
+    "totalResults": 5,
+    "results": [
+      {
+        "rank": 1,
+        "price": "178.00 EUR",
+        "website": "ExampleTravel",
+        "bookingUrl": "https://example.com/booking/...",
+        "fareType": "Standard Fare"
+      }
+    ]
   }
 }
 ```
 
-### Step 3: Get Results with Interactive UI
+The LLM can then summarize these results or present them in a UI.
 
-```json
-{
-  "request_id": "session-123-456"
-}
-```
+---
 
-**Response:** Returns interactive widget showing price comparisons from multiple booking sites.
+## 2. Using Images with an External LLM
 
-## Manual Input Example
+This MCP server does **not** include an image extraction tool.  
+Instead, you should use your own LLM with vision (or a separate service) to extract text from images, then feed that text into `format_flight_pricecheck_request`.
 
-You can also use `submit_session` directly without image extraction:
+### Recommended Pattern
 
-```json
-{
-  "legs": [
-    {
-      "segments": [
-        {
-          "airline": "UA",
-          "flightNumber": "1612",
-          "departureAirport": "ZUR",
-          "arrivalAirport": "JFK",
-          "departureDate": "2025-12-15",
-          "departureTime": "14:30",
-          "arrivalTime": "17:45",
-          "plusDays": 0
-        }
-      ]
-    }
-  ],
-  "travelClass": "economy",
-  "adults": 1,
-  "children": 0,
-  "infantsInSeat": 0,
-  "infantsOnLap": 0,
-  "source": "manual-input",
-  "price": "800",
-  "currency": "USD",
-  "location": "United States"
-}
-```
+1. **User uploads screenshot** to your application or to an LLM that supports images (Claude, Gemini, etc.).
+2. **Ask the LLM** to produce a structured textual summary, e.g.:
 
-## Key Improvements
+> Please read this flight booking screenshot and describe:
+> - Airline and flight number  
+> - Departure and arrival airports (IATA codes)  
+> - Departure and arrival dates and times  
+> - Number of passengers and cabin class  
+> - Total price and currency  
 
-### 1. Simplified Data Structure
-- **Before:** Nested `trip` object with separate `source`, `price`, `currency`, `location`
-- **After:** Flat structure with all fields at the top level
-- **Benefit:** Easier to work with, especially when extracting from images
+3. **Take the LLM’s text output** and pass it as `user_request` to `format_flight_pricecheck_request`.
+4. **Use the formatted output** to call `flight_pricecheck` as shown above.
 
-### 2. Image Extraction Integration
-- **New Tool:** `extract_image` uses the same AI vision as your frontend
-- **Seamless Flow:** Extract → Submit → Get Results
-- **Smart Conversion:** Automatically converts extracted data to submit format
+This keeps image handling in your control and lets the Navifare MCP server focus purely on:
 
-### 3. Enhanced Error Handling
-- **Validation:** Proper Zod schemas with descriptive error messages
-- **Graceful Failures:** Clear error messages for invalid inputs
-- **Debugging:** Detailed error information in `_meta` fields
+- Parsing and validating flight details
+>- Calling Navifare’s price discovery API
 
-## Testing in MCP Inspector
+---
 
-### Test Files Available:
-- `test/test-extract-image.json` - Sample image extraction input
-- `test/test-submit-session.json` - Sample session submission input  
-- `test/test-get-results.json` - Sample results retrieval input
+## 3. Testing in MCP Inspector
 
-### Running Tests:
+### Running MCP Inspector
+
 ```bash
-cd /Users/simonenavifare/navifare/frontend/front-end/mcp/navifare-mcp
-npx @modelcontextprotocol/inspector node dist/index.js
+npx @modelcontextprotocol/inspector https://mcp.navifare.com/mcp
 ```
 
-See [`test/README.md`](../test/README.md) for more information about test files.
+Then:
 
-Then test each tool with the provided JSON inputs.
+- Call `tools/list` to see `format_flight_pricecheck_request` and `flight_pricecheck`.
+- Use the JSON examples above to call each tool.
 
-## Environment Setup
 
-### Required Environment Variables:
+---
+
+## 4. Environment Setup
+
+### Recommended Environment Variables
+
 ```bash
-# For image extraction functionality
 GEMINI_API_KEY=your_gemini_api_key_here
-
-# Optional - defaults to production
-NAVIFARE_API_BASE_URL=https://api.navifare.com/api/v1/price-discovery/flights
 ```
 
-### Getting Gemini API Key:
+This is used if you rely on Gemini for any text/image parsing in your own integration or in helper scripts.  
+The MCP tools themselves focus on **textual flight details** and Navifare’s price discovery.
+
+### Getting a Gemini API Key
+
 1. Go to [Google AI Studio](https://aistudio.google.com/)
 2. Create a new API key
-3. Set it as `GEMINI_API_KEY` environment variable
+3. Set it as `GEMINI_API_KEY` in your environment
 
-## OpenAI Apps SDK Features
+---
 
-All tools include full OpenAI compliance:
+## 5. Troubleshooting
 
-### Tool Metadata:
-- ✅ Status strings during invocation
-- ✅ Locale negotiation support
-- ✅ Descriptive input schemas
-- ✅ Proper error handling
+**“Gemini API key not configured”**
+- Set `GEMINI_API_KEY` environment variable (if your integration uses Gemini).
 
-### Response Structure:
-- ✅ `content` - Text for the AI model
-- ✅ `structuredContent` - Data for UI components
-- ✅ `_meta` - Hidden metadata for debugging
+**“Invalid arguments for tool flight_pricecheck”**
+- Ensure all required fields are present (`trip.legs`, `travelClass`, `adults`, `children`, `infantsInSeat`, `infantsOnLap`, `source`, `price`, `currency`).
+- Use the exact structure returned by `format_flight_pricecheck_request` or `tools/list` schemas.
 
-### UI Components:
-- ✅ Interactive flight results widget
-- ✅ CSP security policies
-- ✅ Responsive design
-- ✅ Direct booking links
+**“Tool format_flight_pricecheck_request says more info needed”**
+- Ask the user follow‑up questions for the missing fields.
+- Re‑call the tool with the enriched `user_request`.
 
-## Usage in ChatGPT
+---
 
-### Example Conversation:
-**User:** "I have a screenshot of my flight booking. Can you help me find better prices?"
-
-**ChatGPT:** 
-1. Calls `extract_image` with the screenshot
-2. Gets structured flight data
-3. Calls `submit_session` with extracted data
-4. Calls `get_session_results` to show interactive price comparison
-5. Displays beautiful widget with all available prices and booking links
-
-### Benefits:
-- **One-Click Workflow:** Upload image → Get price comparison
-- **Interactive Results:** Click directly to book on any site
-- **Comprehensive Data:** All flight details extracted automatically
-- **Real-Time Pricing:** Live data from multiple booking sites
-
-## Troubleshooting
-
-### Common Issues:
-
-**"Gemini API key not configured"**
-- Set `GEMINI_API_KEY` environment variable
-- Get key from Google AI Studio
-
-**"Invalid arguments for tool submit_session"**
-- Ensure `adults` is at least 1
-- Check all required fields are present
-- Use the correct JSON structure (flat, not nested)
-
-**"Failed to extract flight details"**
-- Ensure image contains clear flight booking information
-- Check image is not corrupted
-- Try with a different screenshot
-
-**Widget not displaying**
-- Verify `get_session_results` returns valid data
-- Check browser console for errors
-- Ensure session ID is correct
-
-## Next Steps
-
-### Potential Enhancements:
-1. **Batch Processing:** Extract multiple images at once
-2. **Price Alerts:** Set up notifications for price changes
-3. **Historical Data:** Track price trends over time
-4. **Multi-Currency:** Support for all major currencies
-5. **Airline Integration:** Direct booking through airline APIs
-
-### Integration Ideas:
-1. **Slack Bot:** Share flight screenshots in Slack
-2. **Email Integration:** Send price comparisons via email
-3. **Calendar Integration:** Add flight details to calendar
-4. **Travel Planning:** Multi-city trip support
-
-## Support
+## 6. Support
 
 For issues or questions:
-- **API Issues:** Contact Navifare support
-- **MCP Server:** Create issue in this repository
-- **OpenAI Integration:** See OpenAI Apps SDK documentation
-- **Gemini API:** Check Google AI Studio documentation
+
+- **API Issues**: Contact Navifare support  
+- **MCP Server**: Create an issue in this repository  
+- **Gemini API**: Check Google AI Studio documentation
+
 
