@@ -140,11 +140,11 @@ export async function submit_and_poll_session(input: any, onProgress?: (results:
     }
     
     console.error(`✅ Session created with ID: ${request_id}`);
-    console.error('⏳ Starting polling for results (will poll for up to 90 seconds)...');
-    
-    // Poll for results: 90 seconds total, checking every 10 seconds
-    const totalTimeout = 90000; // 90 seconds in milliseconds
-    const pollInterval = 10000; // 10 seconds between polls
+    console.error('⏳ Starting polling for results (will poll for up to 55 seconds)...');
+
+    // Poll for results: 55 seconds total (to fit within MCP SDK's 60s request timeout), checking every 5 seconds
+    const totalTimeout = 55000; // 55 seconds in milliseconds (MCP SDK has 60s hardcoded timeout)
+    const pollInterval = 5000; // 5 seconds between polls for faster result detection
     
     const startTime = Date.now();
     let lastResults: any = null;
@@ -158,7 +158,7 @@ export async function submit_and_poll_session(input: any, onProgress?: (results:
       
       // Check timeout BEFORE polling to avoid unnecessary API calls
       if (elapsedTime >= totalTimeout) {
-        console.error(`  ⏱️  Reached 90-second timeout (${Math.round(elapsedTime / 1000)}s elapsed). Stopping polling.`);
+        console.error(`  ⏱️  Reached 55-second timeout (${Math.round(elapsedTime / 1000)}s elapsed). Stopping polling.`);
         break;
       }
       
@@ -203,7 +203,7 @@ export async function submit_and_poll_session(input: any, onProgress?: (results:
       // Check timeout again after the poll
       const elapsed = Date.now() - startTime;
       if (elapsed >= totalTimeout) {
-        console.error(`  ⏱️  Reached 90-second timeout. Stopping polling.`);
+        console.error(`  ⏱️  Reached 55-second timeout. Stopping polling.`);
         break;
       }
       

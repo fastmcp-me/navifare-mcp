@@ -112,6 +112,7 @@ Search multiple booking sources to find better prices for a specific flight the 
 
 - **Round-trip flights only**: One-way trips are not yet supported
 - **Same origin/destination**: Open-jaw trips (returning to a different airport) are not yet supported
+- **55-second polling timeout**: The `flight_pricecheck` tool polls for up to 55 seconds (to fit within MCP SDK's 60-second request timeout). For searches that may take longer, use the async pattern with `submit_session` + `get_session_results` tools in STDIO mode
 
 ## Revenue Share
 

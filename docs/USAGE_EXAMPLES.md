@@ -20,6 +20,7 @@ This document only describes the **current** workflow using these two tools.
 
 - **Round-trip flights only**: One-way trips are not yet supported
 - **Same origin/destination**: Open-jaw trips (returning to a different airport) are not yet supported
+- **55-second polling timeout**: The `flight_pricecheck` tool polls for up to 55 seconds. For longer searches, see the async pattern below
 
 ---
 
@@ -283,13 +284,69 @@ The MCP tools themselves focus on **textual flight details** and Navifare’s pr
 - Ensure all required fields are present (`trip.legs`, `travelClass`, `adults`, `children`, `infantsInSeat`, `infantsOnLap`, `source`, `price`, `currency`).
 - Use the exact structure returned by `format_flight_pricecheck_request` or `tools/list` schemas.
 
-**“Tool format_flight_pricecheck_request says more info needed”**
+**"Tool format_flight_pricecheck_request says more info needed"**
 - Ask the user follow‑up questions for the missing fields.
 - Re‑call the tool with the enriched `user_request`.
 
+**"Request timed out" (MCP error -32001)**
+- The MCP SDK has a hardcoded 60-second request timeout
+- The `flight_pricecheck` tool polls for up to 55 seconds
+- For searches that may take longer, use the async pattern below
+
 ---
 
-## 6. Support
+## 6. Async Polling Pattern (STDIO Mode)
+
+For searches that may exceed the 55-second timeout, STDIO mode provides separate tools for async polling:
+
+### Step 1: Submit the search
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "submit_session",
+    "arguments": {
+      "trip": { ... },
+      "source": "user",
+      "price": "221",
+      "currency": "EUR",
+      "location": "IT"
+    }
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "request_id": "abc123..."
+}
+```
+
+### Step 2: Poll for results
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {
+    "name": "get_session_results",
+    "arguments": {
+      "request_id": "abc123..."
+    }
+  }
+}
+```
+
+Repeat polling until `status` is `COMPLETED` or you have sufficient results.
+
+---
+
+## 7. Support
 
 For issues or questions:
 
