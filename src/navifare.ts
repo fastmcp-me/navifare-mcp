@@ -3,7 +3,54 @@ import fetch from "node-fetch";
 // MCP server runs server-side (Node.js), so no CORS restrictions - call backend directly
 const API_BASE_URL = process.env.NAVIFARE_API_BASE_URL || "https://api.navifare.com/api/v1/price-discovery/flights";
 
+/**
+ * Validates that the trip is a supported type (round-trip with same origin/destination).
+ * Throws an error for one-way trips or open-jaw trips.
+ */
+function validateTripType(input: any): void {
+  const legs = input?.trip?.legs;
+
+  if (!legs || !Array.isArray(legs)) {
+    throw new Error('Invalid trip: missing legs array');
+  }
+
+  // Check for one-way trips (only 1 leg)
+  if (legs.length === 1) {
+    throw new Error(
+      'One-way trips are not yet supported. Please provide a round-trip itinerary with both outbound and return flights.'
+    );
+  }
+
+  // Check for open-jaw trips (return destination doesn't match outbound origin)
+  if (legs.length >= 2) {
+    const outboundLeg = legs[0];
+    const returnLeg = legs[legs.length - 1];
+
+    // Get first segment of outbound and last segment of return
+    const outboundSegments = outboundLeg?.segments;
+    const returnSegments = returnLeg?.segments;
+
+    if (outboundSegments?.length > 0 && returnSegments?.length > 0) {
+      const outboundOrigin = outboundSegments[0]?.departureAirport;
+      const outboundDestination = outboundSegments[outboundSegments.length - 1]?.arrivalAirport;
+      const returnOrigin = returnSegments[0]?.departureAirport;
+      const returnDestination = returnSegments[returnSegments.length - 1]?.arrivalAirport;
+
+      // For a valid round-trip: return should go from outbound destination back to outbound origin
+      if (returnOrigin !== outboundDestination || returnDestination !== outboundOrigin) {
+        throw new Error(
+          `Open-jaw trips are not yet supported. The return flight must depart from ${outboundDestination} and arrive at ${outboundOrigin}. ` +
+          `Got: ${returnOrigin} to ${returnDestination}.`
+        );
+      }
+    }
+  }
+}
+
 export async function submit_session(input: any) {
+  // Validate trip type before making API call
+  validateTripType(input);
+
   console.error('📤 Sending request to Navifare API:', JSON.stringify(input, null, 2));
   console.error('📤 API URL:', `${API_BASE_URL}/session`);
   const res = await fetch(`${API_BASE_URL}/session`, {
@@ -141,7 +188,7 @@ export async function submit_and_poll_session(input: any, onProgress?: (results:
     
     console.error(`✅ Session created with ID: ${request_id}`);
     console.error('⏳ Starting polling for results (will poll for up to 90 seconds)...');
-    
+
     // Poll for results: 90 seconds total, checking every 10 seconds
     const totalTimeout = 90000; // 90 seconds in milliseconds
     const pollInterval = 10000; // 10 seconds between polls

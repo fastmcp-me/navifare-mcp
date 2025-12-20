@@ -16,6 +16,11 @@ If you want to work with **screenshots or images**, the recommended pattern is:
 
 This document only describes the **current** workflow using these two tools.
 
+### Current Limitations
+
+- **Round-trip flights only**: One-way trips are not yet supported. Requests with a single leg will return an error immediately.
+- **Same origin/destination**: Open-jaw trips (returning to a different airport) are not yet supported. The return flight must depart from the outbound destination and arrive at the outbound origin.
+
 ---
 
 ## 1. Pure Text Workflow (Recommended)
@@ -278,9 +283,16 @@ The MCP tools themselves focus on **textual flight details** and Navifare’s pr
 - Ensure all required fields are present (`trip.legs`, `travelClass`, `adults`, `children`, `infantsInSeat`, `infantsOnLap`, `source`, `price`, `currency`).
 - Use the exact structure returned by `format_flight_pricecheck_request` or `tools/list` schemas.
 
-**“Tool format_flight_pricecheck_request says more info needed”**
+**"Tool format_flight_pricecheck_request says more info needed"**
 - Ask the user follow‑up questions for the missing fields.
 - Re‑call the tool with the enriched `user_request`.
+
+**"One-way trips are not yet supported"**
+- Provide a round-trip itinerary with both outbound and return flights (2 legs).
+
+**"Open-jaw trips are not yet supported"**
+- Ensure the return flight departs from the outbound destination and arrives at the outbound origin.
+- Example: If outbound is JFK → CDG, return must be CDG → JFK.
 
 ---
 
